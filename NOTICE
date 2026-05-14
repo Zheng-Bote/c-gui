@@ -1,0 +1,12 @@
+Cority GUI (c-gui)
+Copyright (c) 2025 ZHENG Robert
+
+This product includes software developed by:
+- ZHENG Robert (robert@hase-zheng.net)
+- The nlohmann/json project
+- The libcurl project
+- The libsodium project
+- The valijson project
+- The inih project
+- The wxWidgets project
+- The Catch2 project
