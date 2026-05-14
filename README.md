@@ -5,8 +5,9 @@ c-gui is a C++23 desktop application designed for secure data validation and upl
 ## Features
 
 - **Multi-source Data Input**: Load data from CSV files or via dynamic plugins (PostgreSQL, Kafka).
+- **Multi-target Data Output**: Upload data to multiple SaaS endpoints via dynamic plugins.
 - **JSON Schema Validation**: Rigorous validation of incoming data against predefined schemas.
-- **Secure Configuration**: INI files are encrypted on disk using XChaCha20-Poly1305.
+- **Secure Configuration**: INI files are encrypted on disk using XChaCha20-Poly1305 and Argon2id for password hashing.
 - **Async Processing**: Background worker threads for validation and upload tasks to ensure a smooth UI experience.
 - **Cross-platform**: Supports Windows 11, Linux (and macOS).
 
@@ -57,7 +58,9 @@ For a detailed architectural overview, including C4 models, please see the [Arch
 The project follows a modular architecture:
 
 - **cgui_core**: Static library containing the business logic (Config, Plugins, Validation, Upload).
-- **Plugins**: Shared libraries (`.so`/`.dll`) loaded at runtime via an ABI-stable C interface.
+- **Plugins**: Shared libraries (`.so`/`.dll`) loaded at runtime. Every topic has a dual-plugin setup:
+  - `<topic>_data`: Data ingestion (Input).
+  - `<topic>_upload`: API integration (Output).
 - **GUI**: wxWidgets-based front-end.
 
 ```mermaid
@@ -67,9 +70,10 @@ graph TD
     B --> D[PluginLoader]
     B --> E[Validator]
     B --> F[Uploader]
-    D --> G[CSV Plugin]
-    D --> H[DB Plugin]
-    D --> I[Kafka Plugin]
+    D --> G[Topic_data Plugin]
+    D --> H[Topic_upload Plugin]
+    G -.->|JSON| B
+    B -.->|JSON| H
 ```
 
 ## Testing

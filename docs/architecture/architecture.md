@@ -105,10 +105,12 @@ C4Component
 - **No Plaintext Secrets:** Configuration files (`.ini`) containing API keys, database credentials, or SaaS endpoints are encrypted on disk using `libsodium`.
 - **In-Memory Security:** The user is prompted for a master password at runtime. This password is used to decrypt the configuration into memory and is never persisted to disk.
 
-### 2. Plugin-Based Data Extraction
-- To support diverse and evolving data sources (e.g., flat files, SQL databases, message brokers like Kafka) without bloating the core application, data extraction is abstracted behind a plugin interface.
-- Plugins are compiled as shared libraries (`.so` or `.dll`) and loaded at runtime. 
-- The interface is defined using a pure C ABI (e.g., `create_plugin`, `destroy_plugin`) to ensure stability across different C++ compiler versions or standard libraries.
+### 2. Dual-Plugin Strategy
+- To support diverse data sources and complex SaaS API handshakes, each topic is managed by two specialized plugins:
+  - **Ingest Plugins (`<topic>_data`):** Responsible for reading data from sources (CSV, DB, Kafka) and converting it to the application's internal JSON format.
+  - **Upload Plugins (`<topic>_upload`):** Responsible for the SaaS-specific authentication flow (e.g., token negotiation), payload restructuring (e.g., wrapping in "records"), and secure transmission via libcurl.
+- This separation allows for independent development and testing of data acquisition vs. API integration logic.
+- All plugins are compiled as shared libraries (`.so` or `.dll`) and loaded at runtime via a pure C ABI.
 
 ### 3. Responsive UI (Threading)
 - Heavy operations such as reading data, validating large JSON payloads, and network I/O are strictly forbidden on the main thread.
