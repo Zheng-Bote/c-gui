@@ -43,10 +43,6 @@ bool DbInputPlugin::initialize(const nlohmann::json& config) {
     }
 }
 
-std::string DbInputPlugin::get_topic() const {
-    return m_topic;
-}
-
 std::vector<nlohmann::json> DbInputPlugin::fetch_batch(size_t max_records) {
     std::vector<nlohmann::json> batch;
     if (!m_initialized || !m_connection) return batch;

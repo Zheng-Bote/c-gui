@@ -1,12 +1,44 @@
-Cority GUI (c-gui)
-Copyright (c) 2025 ZHENG Robert
+c-gui
+Copyright 2026 ZHENG Robert
 
-This product includes software developed by:
-- ZHENG Robert (robert@hase-zheng.net)
-- The nlohmann/json project
-- The libcurl project
-- The libsodium project
-- The valijson project
-- The inih project
-- The wxWidgets project
-- The Catch2 project
+This product includes software developed by ZHENG Robert (robert@hase-zheng.net).
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+---
+
+This product includes software developed by third parties. The following components are bundled with this distribution or used during the build process:
+
+- libcurl (>=8.9)
+  License: libcurl License (MIT/X derivative)
+  Attribution: This product includes software developed by the curl project (https://curl.se/).
+
+- nlohmann_json (>=3.12)
+  License: MIT
+  Attribution: Copyright (c) 2013-2022 Niels Lohmann (https://github.com/nlohmann/json).
+
+- yaml-cpp (>=0.8)
+  License: MIT
+  Attribution: Copyright (c) 2008-2015 Jesse Beder.
+
+- tomlplusplus (>=3.4)
+  License: MIT
+  Attribution: Copyright (c) Mark Gillard (https://github.com/marzer/tomlplusplus).
+
+- argparse (>=3.1)
+  License: MIT
+  Attribution: Copyright (c) 2020 Prashanth Ganapathy.
+
+- gh-update-checker
+  License: LGPL-3.0
+  Attribution: Copyright (c) 2026 ZHENG Robert.

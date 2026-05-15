@@ -18,11 +18,18 @@
 #include "LogManager.hpp"
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/callback_sink.h>
+#include <spdlog/pattern_formatter.h>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <vector>
 
 namespace cgui {
+
+namespace {
+    LogManager::LogCallback g_callback = nullptr;
+}
 
 LogManager& LogManager::get_instance() {
     static LogManager instance;
@@ -39,6 +46,10 @@ void LogManager::initialize(const std::string& log_path, const std::string& log_
 
     // Initialize core logger
     get_core_logger();
+}
+
+void LogManager::set_callback(LogCallback callback) {
+    g_callback = callback;
 }
 
 std::shared_ptr<spdlog::logger> LogManager::get_logger(const std::string& topic) {
@@ -58,6 +69,21 @@ std::shared_ptr<spdlog::logger> LogManager::get_logger(const std::string& topic)
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 
     std::vector<spdlog::sink_ptr> sinks {file_sink, console_sink};
+
+    if (g_callback) {
+        auto gui_sink = std::make_shared<spdlog::sinks::callback_sink_mt>([](const spdlog::details::log_msg& msg) {
+            if (!g_callback) return;
+            
+            spdlog::memory_buf_t formatted;
+            spdlog::pattern_formatter formatter("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
+            
+            formatter.format(msg, formatted);
+            
+            g_callback(fmt::to_string(formatted));
+        });
+        sinks.push_back(gui_sink);
+    }
+
     auto logger = std::make_shared<spdlog::logger>(logger_name, sinks.begin(), sinks.end());
     
     logger->set_level(m_level);

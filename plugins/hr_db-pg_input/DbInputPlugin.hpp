@@ -26,13 +26,15 @@
 
 namespace cgui {
 
-class DbInputPlugin : public IPlugin {
+class DbInputPlugin : public IDataPlugin {
 public:
     DbInputPlugin() = default;
     ~DbInputPlugin() override = default;
 
     bool initialize(const nlohmann::json& config) override;
-    [[nodiscard]] std::string get_topic() const override;
+    [[nodiscard]] std::string get_topic() const override { return "HR"; }
+    [[nodiscard]] std::string get_version() const override { return "1.0.0"; }
+    [[nodiscard]] std::string get_interface_type() const override { return "db-pg"; }
     std::vector<nlohmann::json> fetch_batch(size_t max_records) override;
     void shutdown() override;
 

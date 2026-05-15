@@ -20,12 +20,21 @@
 
 #include <string>
 #include <vector>
+#include <expected>
 #include <nlohmann/json.hpp>
 
 namespace cgui {
 
 /**
- * @brief Interface for all input plugins.
+ * @brief Types of plugins supported by the application.
+ */
+enum class PluginType {
+    DATA,   ///< Ingest plugin (reads data)
+    UPLOAD  ///< Output plugin (uploads data)
+};
+
+/**
+ * @brief Base interface for all plugins.
  */
 class IPlugin {
 public:
@@ -39,11 +48,34 @@ public:
     virtual bool initialize(const nlohmann::json& config) = 0;
 
     /**
-     * @brief Get the topic this plugin provides data for.
+     * @brief Get the topic this plugin handles.
      * @return The topic name.
      */
     [[nodiscard]] virtual std::string get_topic() const = 0;
 
+    /**
+     * @brief Get the version of the plugin.
+     * @return Version string (e.g., "1.0.0").
+     */
+    [[nodiscard]] virtual std::string get_version() const = 0;
+
+    /**
+     * @brief Get the type of the plugin.
+     * @return PluginType (DATA or UPLOAD).
+     */
+    [[nodiscard]] virtual PluginType get_type() const = 0;
+
+    /**
+     * @brief Shutdown the plugin and release resources.
+     */
+    virtual void shutdown() = 0;
+};
+
+/**
+ * @brief Interface for data ingest plugins.
+ */
+class IDataPlugin : public IPlugin {
+public:
     /**
      * @brief Fetch a batch of records.
      * @param max_records Maximum number of records to fetch.
@@ -52,9 +84,27 @@ public:
     virtual std::vector<nlohmann::json> fetch_batch(size_t max_records) = 0;
 
     /**
-     * @brief Shutdown the plugin and release resources.
+     * @brief Get the interface type (e.g., "csv", "db-pg").
+     * @return The interface type string.
      */
-    virtual void shutdown() = 0;
+    [[nodiscard]] virtual std::string get_interface_type() const = 0;
+
+    [[nodiscard]] PluginType get_type() const override { return PluginType::DATA; }
+};
+
+/**
+ * @brief Interface for upload output plugins.
+ */
+class IUploadPlugin : public IPlugin {
+public:
+    /**
+     * @brief Upload data to the target system.
+     * @param data The JSON data to upload.
+     * @return Success or error message.
+     */
+    virtual std::expected<void, std::string> upload(const nlohmann::json& data) = 0;
+
+    [[nodiscard]] PluginType get_type() const override { return PluginType::UPLOAD; }
 };
 
 } // namespace cgui
@@ -68,7 +118,7 @@ public:
 extern "C" {
     /**
      * @brief Factory function to create a plugin instance.
-     * @return Pointer to the created plugin instance.
+     * @return Pointer to the created plugin instance (must be IDataPlugin* or IUploadPlugin*).
      */
     CGUI_PLUGIN_EXPORT cgui::IPlugin* create_plugin();
 

@@ -44,10 +44,6 @@ bool CsvInputPlugin::initialize(const nlohmann::json& config) {
     return true;
 }
 
-std::string CsvInputPlugin::get_topic() const {
-    return m_topic;
-}
-
 std::vector<nlohmann::json> CsvInputPlugin::fetch_batch(size_t max_records) {
     std::vector<nlohmann::json> batch;
     if (!m_initialized) return batch;

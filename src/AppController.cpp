@@ -2,16 +2,16 @@
  * SPDX-FileComment: AppController implementation for c-gui
  * SPDX-FileType: SOURCE
  * SPDX-FileContributor: ZHENG Robert
- * SPDX-FileCopyrightText: 2025 ZHENG Robert
+ * SPDX-FileCopyrightText: 2026 ZHENG Robert
  * SPDX-License-Identifier: Apache-2.0
  *
  * @file AppController.cpp
  * @brief Implementation of application orchestration logic.
- * @version 1.0.0
- * @date 2025-02-13
+ * @version 1.1.0
+ * @date 2026-05-15
  *
  * @author ZHENG Robert (robert@hase-zheng.net)
- * @copyright Copyright (c) 2025 ZHENG Robert
+ * @copyright Copyright (c) 2026 ZHENG Robert
  * @license Apache-2.0
  */
 
@@ -19,12 +19,48 @@
 #include "MainWindow.hpp"
 #include "LogManager.hpp"
 #include "AuthManager.hpp"
+#include "rz_config.hpp"
 #include <wx/wx.h>
 #include <wx/app.h>
 #include <thread>
 #include <format>
+#include <algorithm>
+
+#ifdef _WIN32
+#include <windows.h>
+#include <lmcons.h>
+#else
+#include <unistd.h>
+#include <pwd.h>
+#endif
 
 namespace cgui {
+
+namespace {
+std::string get_os_user() {
+#ifdef _WIN32
+    TCHAR name[UNLEN + 1];
+    DWORD size = UNLEN + 1;
+    if (GetUserName(name, &size)) {
+        std::wstring wname(name);
+        return std::string(wname.begin(), wname.end());
+    }
+#else
+    uid_t uid = geteuid();
+    struct passwd* pw = getpwuid(uid);
+    if (pw) {
+        return std::string(pw->pw_name);
+    }
+#endif
+    return "unknown_user";
+}
+} // namespace
+
+#ifdef _WIN32
+const std::string kLibExt = ".dll";
+#else
+const std::string kLibExt = ".so";
+#endif
 
 AppController::AppController()
     : m_config_manager(std::make_unique<ConfigManager>()),
@@ -34,38 +70,84 @@ AppController::AppController()
       m_validator(std::make_unique<Validator>()),
       m_uploader(std::make_unique<Uploader>()) {}
 
-std::expected<void, std::string> AppController::init(const std::filesystem::path& ini_path, const std::string& password) {
-    auto result = m_config_manager->load_encrypted_ini(ini_path, password);
-    if (!result) {
-        return result;
-    }
-
-    const auto& config = m_config_manager->get_config();
-
-    // Initialize Logging
-    std::string log_path = "./logs";
-    std::string log_level = "info";
-    if (config.contains("logging")) {
-        if (config["logging"].contains("log_path")) log_path = config["logging"]["log_path"].get<std::string>();
-        if (config["logging"].contains("log_level")) log_level = config["logging"]["log_level"].get<std::string>();
-    }
-    LogManager::get_instance().initialize(log_path, log_level);
-    
+AppController::~AppController() {
     auto logger = LogManager::get_instance().get_core_logger();
-    logger->info("Application initialized. Config loaded from {}", ini_path.string());
+    if (logger) {
+        logger->info("Application session ending.");
+    }
+}
 
-    // Register topics from config
-    if (config.contains("topics")) {
-        for (auto it = config["topics"].begin(); it != config["topics"].end(); ++it) {
-            TopicMeta meta;
-            meta.topic = it.key();
-            meta.schema_path = it.value().at("schema_path").get<std::string>();
-            meta.upload_endpoint = it.value().at("upload_endpoint").get<std::string>();
-            m_topic_registry->register_topic(meta);
+std::expected<void, std::string> AppController::init(const std::filesystem::path& ini_path, const std::string& password) {
+    try {
+        auto result = m_config_manager->load_encrypted_ini(ini_path, password);
+        if (!result) {
+            return result;
         }
+
+        const auto& config = m_config_manager->get_config();
+
+        // Initialize Logging
+        std::string log_path = "./logs";
+        std::string log_level = "info";
+        if (config.contains("logging")) {
+            if (config["logging"].contains("log_path")) log_path = config["logging"]["log_path"].get<std::string>();
+            if (config["logging"].contains("log_level")) log_level = config["logging"]["log_level"].get<std::string>();
+        }
+
+        LogManager::get_instance().set_callback([this](const std::string& msg) {
+            update_log(msg);
+        });
+        LogManager::get_instance().initialize(log_path, log_level);
+        
+        auto logger = LogManager::get_instance().get_core_logger();
+        logger->info("Application session started. Version: {}", rz::config::VERSION);
+        logger->info("OS User: {}", get_os_user());
+        logger->info("Config loaded from {}", ini_path.string());
+
+        // Load Plugin Paths
+        m_data_plugins_dir = "./plugins/data";
+        m_upload_plugins_dir = "./plugins/upload";
+        if (config.contains("paths")) {
+            if (config["paths"].contains("data_plugins_dir")) m_data_plugins_dir = config["paths"]["data_plugins_dir"].get<std::string>();
+            if (config["paths"].contains("upload_plugins_dir")) m_upload_plugins_dir = config["paths"]["upload_plugins_dir"].get<std::string>();
+        }
+        logger->info("Data plugins directory: {}", m_data_plugins_dir.string());
+        logger->info("Upload plugins directory: {}", m_upload_plugins_dir.string());
+
+        // Register topics from config
+        if (config.contains("topics")) {
+            for (auto it = config["topics"].begin(); it != config["topics"].end(); ++it) {
+                if (!it.value().is_object()) continue;
+
+                TopicMeta meta;
+                meta.topic = it.key();
+                meta.schema_path = it.value().at("schema_path").get<std::string>();
+                meta.upload_endpoint = it.value().at("upload_endpoint").get<std::string>();
+                
+                // Default upload plugin name based on topic
+                meta.upload_plugin = it.value().contains("upload_plugin") ? it.value().at("upload_plugin").get<std::string>() : meta.topic + "_upload";
+                
+                // Convert to lowercase for plugin filename (convention)
+                std::transform(meta.upload_plugin.begin(), meta.upload_plugin.end(), meta.upload_plugin.begin(), ::tolower);
+
+                m_topic_registry->register_topic(meta);
+                logger->info("Registered topic: {} (Upload plugin: {})", meta.topic, meta.upload_plugin);
+            }
+        }
+    } catch (const std::exception& e) {
+        auto logger = LogManager::get_instance().get_core_logger();
+        if (logger) {
+            logger->error("Exception during initialization: {}", e.what());
+        }
+        return std::unexpected(std::format("Configuration error: {}", e.what()));
     }
 
     return {};
+}
+
+std::filesystem::path AppController::get_plugin_path(const std::string& name, PluginType type) const {
+    std::filesystem::path base_dir = (type == PluginType::DATA) ? m_data_plugins_dir : m_upload_plugins_dir;
+    return base_dir / (name + kLibExt);
 }
 
 std::vector<std::string> AppController::get_topics() const {
@@ -78,44 +160,154 @@ void AppController::select_topic(const std::string& topic) {
     LogManager::get_instance().get_core_logger()->info("Topic selected: {}", topic);
 }
 
-std::expected<void, std::string> AppController::load_csv(const std::filesystem::path& path) {
+std::vector<std::string> AppController::get_available_interfaces(const std::string& topic) const {
+    std::vector<std::string> interfaces;
+    if (!std::filesystem::exists(m_data_plugins_dir)) return interfaces;
+
+    std::string prefix = topic + "_";
+    std::string suffix = "_input" + kLibExt;
+    std::transform(prefix.begin(), prefix.end(), prefix.begin(), ::tolower);
+    std::transform(suffix.begin(), suffix.end(), suffix.begin(), ::tolower);
+
+    for (const auto& entry : std::filesystem::directory_iterator(m_data_plugins_dir)) {
+        if (!entry.is_regular_file()) continue;
+        
+        std::string filename = entry.path().filename().string();
+        std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
+
+        if (filename.starts_with(prefix) && filename.ends_with(suffix)) {
+            // Extract interface name: <topic>_<interface>_input.<ext>
+            std::string interface = filename.substr(prefix.length());
+            interface = interface.substr(0, interface.length() - suffix.length());
+            interfaces.push_back(interface);
+        }
+    }
+    return interfaces;
+}
+
+std::string AppController::get_default_data_source(const std::string& topic, const std::string& interface_name) const {
+    const auto& config = m_config_manager->get_config();
+    if (config.contains("topics") && config["topics"].contains(topic)) {
+        const auto& topic_config = config["topics"][topic];
+        std::string key = "data_" + interface_name;
+        if (topic_config.contains(key)) {
+            return topic_config[key].get<std::string>();
+        }
+    }
+    return "";
+}
+
+std::vector<PluginInfo> AppController::get_all_plugins() const {
+    std::vector<PluginInfo> plugins;
+    auto logger = LogManager::get_instance().get_core_logger();
+
+    auto scan_dir = [&](const std::filesystem::path& dir, PluginType type) {
+        logger->debug("Scanning directory for {} plugins: {}", 
+                     (type == PluginType::DATA ? "DATA" : "UPLOAD"), dir.string());
+        
+        if (!std::filesystem::exists(dir)) {
+            logger->warn("Plugin directory does not exist: {}", dir.string());
+            return;
+        }
+
+        for (const auto& entry : std::filesystem::directory_iterator(dir)) {
+            if (!entry.is_regular_file() || entry.path().extension() != kLibExt) continue;
+
+            logger->debug("Found potential plugin file: {}", entry.path().string());
+            PluginLoader loader;
+            if (auto res = loader.load(entry.path()); res) {
+                auto* plugin = loader.get_plugin();
+                
+                // Validate that the plugin type matches the directory type
+                if (plugin->get_type() != type) {
+                    logger->warn("Plugin {} reported type {}, but was found in the {} directory. Skipping.", 
+                                 entry.path().string(), 
+                                 (plugin->get_type() == PluginType::DATA ? "DATA" : "UPLOAD"),
+                                 (type == PluginType::DATA ? "data" : "upload"));
+                    continue;
+                }
+
+                PluginInfo info;
+                info.name = entry.path().stem().string();
+                info.topic = plugin->get_topic();
+                info.type = (plugin->get_type() == PluginType::DATA) ? "DATA" : "UPLOAD";
+                info.version = plugin->get_version();
+                info.path = entry.path();
+
+                if (plugin->get_type() == PluginType::DATA) {
+                    info.interface = static_cast<IDataPlugin*>(plugin)->get_interface_type();
+                }
+                
+                logger->info("Discovered plugin: {} (Topic: {}, Version: {})", info.name, info.topic, info.version);
+                plugins.push_back(info);
+                plugin->shutdown();
+            } else {
+                logger->error("Failed to load plugin for metadata scan: {} ({})", entry.path().string(), res.error());
+            }
+        }
+    };
+
+    scan_dir(m_data_plugins_dir, PluginType::DATA);
+    scan_dir(m_upload_plugins_dir, PluginType::UPLOAD);
+
+    return plugins;
+}
+
+std::expected<void, std::string> AppController::load_data(const std::string& interface_name, const std::string& path_or_conn) {
     if (m_current_topic.empty()) {
         return std::unexpected("No topic selected");
     }
 
     auto logger = LogManager::get_instance().get_logger(m_current_topic);
-    logger->info("Loading CSV file: {}", path.string());
+    logger->info("Loading data for topic {} using interface {} from: {}", m_current_topic, interface_name, path_or_conn);
 
-    const auto& config = m_config_manager->get_config();
-    if (!config.contains("plugins") || !config["plugins"].contains("csv")) {
-        logger->error("CSV plugin not configured in INI");
-        return std::unexpected("CSV plugin not configured in INI");
+    auto meta = m_topic_registry->get_topic_meta(m_current_topic);
+    if (!meta) {
+        logger->error("Topic metadata not found for: {}", m_current_topic);
+        return std::unexpected("Topic metadata not found");
     }
 
-    std::filesystem::path plugin_path = config["plugins"]["csv"].get<std::string>();
+    // Construct plugin name based on convention: <topic>_<interface>_input
+    std::string plugin_name = m_current_topic + "_" + interface_name + "_input";
+    std::transform(plugin_name.begin(), plugin_name.end(), plugin_name.begin(), ::tolower);
+
+    std::filesystem::path plugin_path = get_plugin_path(plugin_name, PluginType::DATA);
     auto load_res = m_plugin_loader->load(plugin_path);
     if (!load_res) {
-        logger->error("Failed to load plugin {}: {}", plugin_path.string(), load_res.error());
-        return std::unexpected(std::format("Failed to load plugin {}: {}", plugin_path.string(), load_res.error()));
+        logger->error("Failed to load data plugin {}: {}", plugin_path.string(), load_res.error());
+        return std::unexpected(std::format("Failed to load data plugin {}: {}", plugin_path.string(), load_res.error()));
     }
 
     auto* plugin = m_plugin_loader->get_plugin();
+    if (plugin->get_type() != PluginType::DATA) {
+        logger->error("Plugin {} is not a data plugin", plugin_path.string());
+        return std::unexpected("Loaded plugin is not a data plugin");
+    }
+
+    auto* data_plugin = static_cast<IDataPlugin*>(plugin);
+    
+    // Verify interface type matches
+    if (data_plugin->get_interface_type() != interface_name) {
+        logger->warn("Plugin reported interface type '{}', but was loaded as '{}'", data_plugin->get_interface_type(), interface_name);
+    }
+
     nlohmann::json plugin_config;
-    plugin_config["file_path"] = path.string();
+    plugin_config["file_path"] = path_or_conn;
+    plugin_config["connection_string"] = path_or_conn; // Support both naming styles
     plugin_config["topic"] = m_current_topic;
 
-    if (!plugin->initialize(plugin_config)) {
-        logger->error("Failed to initialize plugin with file: {}", path.string());
-        return std::unexpected("Failed to initialize plugin with provided file");
+    if (!data_plugin->initialize(plugin_config)) {
+        logger->error("Failed to initialize data plugin {} with source: {}", plugin_name, path_or_conn);
+        return std::unexpected("Failed to initialize data plugin");
     }
 
     // Load first batch for preview and full data
-    auto records = plugin->fetch_batch(1000000); // For now, load everything
-    plugin->shutdown();
+    auto records = data_plugin->fetch_batch(1000000); // For now, load everything
+    data_plugin->shutdown();
 
     if (records.empty()) {
-        logger->warn("No records found in file: {}", path.string());
-        return std::unexpected("No records found in file");
+        logger->warn("No records found by data plugin from: {}", path_or_conn);
+        return std::unexpected("No records found");
     }
 
     m_current_data = nlohmann::json::array();
@@ -123,6 +315,7 @@ std::expected<void, std::string> AppController::load_csv(const std::filesystem::
         m_current_data.push_back(r);
     }
 
+    const auto& config = m_config_manager->get_config();
     bool show_preview = true;
     if (config.contains("gui") && config["gui"].contains("show_preview")) {
         std::string val = config["gui"]["show_preview"].get<std::string>();
@@ -136,8 +329,8 @@ std::expected<void, std::string> AppController::load_csv(const std::filesystem::
         }
     }
 
-    update_log(std::format("Loaded {} records from {}", m_current_data.size(), path.filename().string()));
-    logger->info("Successfully loaded {} records from {}", m_current_data.size(), path.string());
+    update_log(std::format("Loaded {} records from {}", m_current_data.size(), std::filesystem::path(path_or_conn).filename().string()));
+    logger->info("Successfully loaded {} records from {}", m_current_data.size(), path_or_conn);
     
     if (m_window) {
         if (show_preview) {
@@ -227,71 +420,69 @@ void AppController::start_upload() {
 
     update_log("Starting upload process...");
     logger->info("Starting upload process for topic {} ({} records)", m_current_topic, m_current_data.size());
+    logger->info("Initiated by OS User: {}", get_os_user());
     update_progress(0);
 
     const auto& config = m_config_manager->get_config();
 
     std::thread([this, meta, config, logger]() {
-        std::string token;
-
-        // Check for SaaS credentials to perform dynamic auth
-        if (config.contains("auth") && config["auth"].contains("saas_base_url") && 
-            config["auth"].contains("saas_login") && config["auth"].contains("saas_password")) {
-
-            logger->info("Performing dynamic SaaS authentication...");
-            auto auth_res = AuthManager::authenticate(
-                config["auth"]["saas_base_url"].get<std::string>(),
-                config["auth"]["saas_login"].get<std::string>(),
-                config["auth"]["saas_password"].get<std::string>()
-            );
-
-            if (auth_res) {
-                token = auth_res->access_token;
-                logger->info("Authentication successful.");
-            } else {
-                logger->error("Authentication failed: {}", auth_res.error());
-                if (m_window) {
-                    m_window->CallAfter([this, err = auth_res.error()]() {
-                        update_log(std::format("Authentication failed: {}", err));
-                        update_progress(100);
-                    });
-                }
-                return;
-            }
-        } else if (config.contains("auth") && config["auth"].contains("bearer_token")) {
-            token = config["auth"]["bearer_token"].get<std::string>();
-            logger->info("Using static bearer token from configuration.");
-        }
-
-        nlohmann::json upload_payload = m_current_data;
-        if (m_current_topic == "HR") {
-            upload_payload = nlohmann::json::object();
-            upload_payload["options"] = {
-                {"updateExistingRecords", "true"},
-                {"insertBaseTables", "true"},
-                {"forceLookupTableUpdate", "true"},
-                {"disableSegUpdate", "false"},
-                {"autoCreatePortalUser", "true"},
-                {"mergeRecordsWithMatchingSsn", "false"},
-                {"dateFormat", "dd.mm.yyyy"}
-            };
-            upload_payload["records"] = m_current_data;
-            logger->info("Formatted HR payload with 'options' and 'records'.");
-        }
-
-        m_uploader->upload_async(meta->upload_endpoint, upload_payload, [this, logger](auto result) {
+        std::filesystem::path plugin_path = get_plugin_path(meta->upload_plugin, PluginType::UPLOAD);
+        
+        // We need a separate loader for the background thread or protect the main one
+        PluginLoader loader;
+        auto load_res = loader.load(plugin_path);
+        if (!load_res) {
+            logger->error("Failed to load upload plugin {}: {}", plugin_path.string(), load_res.error());
             if (m_window) {
-                m_window->CallAfter([this, result, logger]() {
-                    on_upload_complete(result);
+                m_window->CallAfter([this, plugin_path, err = load_res.error()]() {
+                    update_log(std::format("Failed to load upload plugin {}: {}", plugin_path.string(), err));
+                    update_progress(100);
                 });
             }
-        }, token);
+            return;
+        }
+
+        auto* plugin = loader.get_plugin();
+        if (plugin->get_type() != PluginType::UPLOAD) {
+            logger->error("Plugin {} is not an upload plugin", plugin_path.string());
+            return;
+        }
+
+        auto* upload_plugin = static_cast<IUploadPlugin*>(plugin);
+
+        nlohmann::json plugin_config = config; // Give it full config
+        plugin_config["topic"] = m_current_topic;
+        plugin_config["upload_endpoint"] = meta->upload_endpoint;
+
+        if (!upload_plugin->initialize(plugin_config)) {
+            logger->error("Failed to initialize upload plugin {}", plugin_path.string());
+            if (m_window) {
+                m_window->CallAfter([this]() {
+                    update_log("Failed to initialize upload plugin");
+                    update_progress(100);
+                });
+            }
+            return;
+        }
+
+        auto result = upload_plugin->upload(m_current_data);
+        upload_plugin->shutdown();
+
+        if (m_window) {
+            m_window->CallAfter([this, result]() {
+                on_upload_complete(result);
+            });
+        }
     }).detach();
 }
 
 void AppController::update_log(const std::string& message) {
     if (m_window) {
-        m_window->update_log(wxString::FromUTF8(message));
+        m_window->CallAfter([this, message]() {
+            if (m_window) {
+                m_window->update_log(wxString::FromUTF8(message));
+            }
+        });
     }
 }
 

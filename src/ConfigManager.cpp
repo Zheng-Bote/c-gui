@@ -36,6 +36,12 @@ static int ini_handler(void* user, const char* section, const char* name, const 
     auto* config = static_cast<nlohmann::json*>(user);
     std::string s(section);
     
+    std::string val(value);
+    // Strip leading and trailing quotes if they exist
+    if (val.length() >= 2 && val.front() == '"' && val.back() == '"') {
+        val = val.substr(1, val.length() - 2);
+    }
+    
     // Support hierarchical sections like [topics.HR]
     nlohmann::json* current = config;
     size_t pos = 0;
@@ -44,7 +50,7 @@ static int ini_handler(void* user, const char* section, const char* name, const 
         current = &((*current)[part]);
         s.erase(0, pos + 1);
     }
-    (*current)[s][name] = value;
+    (*current)[s][name] = val;
     
     return 1;
 }

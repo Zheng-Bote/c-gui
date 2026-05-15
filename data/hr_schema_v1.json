@@ -16,7 +16,13 @@
     "Organization.Code": { "type": "string" },
     "Department.Code": { "type": "string" },
     "Supervisor": { "type": "string" },
-    "Email": { "type": "string" }
+    "Email": { "type": "string" },
+    "DepartmentDescription": { "type": "string" },
+    "LoginId": { "type": "string" },
+    "CostCenter": { "type": "string" },
+    "EmployeeGroup": { "type": "string" },
+    "PositionCode": { "type": "string" },
+    "PositionDescription": { "type": "string" }
   },
   "required": ["EmployeeNumber", "FirstName", "LastName"]
 }

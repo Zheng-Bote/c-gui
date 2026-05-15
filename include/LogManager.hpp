@@ -23,6 +23,7 @@
 #include <map>
 #include <filesystem>
 #include <spdlog/spdlog.h>
+#include <functional>
 
 namespace cgui {
 
@@ -32,6 +33,8 @@ namespace cgui {
  */
 class LogManager {
 public:
+    using LogCallback = std::function<void(const std::string&)>;
+
     static LogManager& get_instance();
 
     /**
@@ -40,6 +43,12 @@ public:
      * @param log_level Global log level (string: trace, debug, info, etc.).
      */
     void initialize(const std::string& log_path, const std::string& log_level);
+
+    /**
+     * @brief Set a callback for all log messages.
+     * @param callback The function to call with the formatted message.
+     */
+    void set_callback(LogCallback callback);
 
     /**
      * @brief Get or create a logger for a specific topic.

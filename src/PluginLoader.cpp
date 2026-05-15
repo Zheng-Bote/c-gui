@@ -44,8 +44,10 @@ std::expected<void, std::string> PluginLoader::load(const std::filesystem::path&
 #else
     m_handle = dlopen(path.c_str(), RTLD_LAZY);
     if (!m_handle) {
-        logger->error("Failed to load library: {} (error: {})", path.string(), dlerror());
-        return std::unexpected("Failed to load library: " + std::string(dlerror()));
+        const char* err = dlerror();
+        std::string err_msg = err ? err : "Unknown error";
+        logger->error("Failed to load library: {} (error: {})", path.string(), err_msg);
+        return std::unexpected("Failed to load library: " + err_msg);
     }
 #endif
 
@@ -55,13 +57,15 @@ std::expected<void, std::string> PluginLoader::load(const std::filesystem::path&
 #else
     auto create_func = reinterpret_cast<CreatePluginFunc>(dlsym(m_handle, "create_plugin"));
     m_destroy_func = reinterpret_cast<DestroyPluginFunc>(dlsym(m_handle, "destroy_plugin"));
-#endif
-
+    
     if (!create_func || !m_destroy_func) {
-        logger->error("Failed to find required symbols in plugin: {}", path.string());
+        const char* err = dlerror();
+        std::string err_msg = err ? err : "Symbol not found";
+        logger->error("Failed to find required symbols in plugin: {} (error: {})", path.string(), err_msg);
         unload();
-        return std::unexpected("Failed to find required symbols: create_plugin or destroy_plugin");
+        return std::unexpected("Failed to find required symbols: " + err_msg);
     }
+#endif
 
     m_plugin = create_func();
     if (!m_plugin) {

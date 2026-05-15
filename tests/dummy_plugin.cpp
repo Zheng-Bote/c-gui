@@ -18,9 +18,11 @@
 #include "PluginAPI.hpp"
 #include <string>
 
-class DummyPlugin : public cgui::IPlugin {
+class DummyPlugin : public cgui::IDataPlugin {
 public:
     std::string get_topic() const override { return "test_topic"; }
+    std::string get_interface_type() const override { return "dummy"; }
+    std::string get_version() const override { return "0.1.0"; }
     bool initialize(const nlohmann::json& config) override { (void)config; return true; }
     std::vector<nlohmann::json> fetch_batch(size_t max_records) override { (void)max_records; return {}; }
     void shutdown() override {}

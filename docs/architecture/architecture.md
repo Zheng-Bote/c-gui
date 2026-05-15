@@ -1,6 +1,6 @@
 # c-gui Architecture Documentation
 
-This document provides a comprehensive overview of the `c-gui` application architecture. It uses the [C4 model](https://c4model.com/) to describe the system at various levels of abstraction.
+This document provides a comprehensive overview of the `c-gui` application architecture (v0.2.0). It uses the [C4 model](https://c4model.com/) to describe the system at various levels of abstraction.
 
 ## Overview
 
@@ -12,7 +12,8 @@ This document provides a comprehensive overview of the `c-gui` application archi
 - **Security:** libsodium (XChaCha20-Poly1305 for encryption)
 - **Networking:** libcurl
 - **Data Handling:** nlohmann/json
-- **Plugin System:** ABI-stable C interface
+- **Plugin System:** ABI-stable C interface with dynamic discovery
+- **Update Checker:** GitHub API integration
 
 ---
 
@@ -27,16 +28,14 @@ C4Context
     Person(user, "User", "A user of the c-gui application.")
     System(cgui, "c-gui Application", "Desktop application for data validation and upload.")
     
-    System_Ext(datasource_csv, "Local File System", "Local CSV files.")
-    System_Ext(datasource_db, "Database", "External PostgreSQL Database.")
-    System_Ext(datasource_kafka, "Kafka Cluster", "External Kafka cluster.")
+    System_Ext(datasource_any, "Data Sources", "CSV, PostgreSQL, Oracle, Kafka, etc.")
     System_Ext(saas_api, "SaaS Endpoint", "Target SaaS API for data upload.")
+    System_Ext(github, "GitHub", "Project repository for update checks.")
 
     Rel(user, cgui, "Configures and triggers processing, inputs password")
-    Rel(cgui, datasource_csv, "Reads data from", "CSV Plugin")
-    Rel(cgui, datasource_db, "Reads data from", "DB Plugin")
-    Rel(cgui, datasource_kafka, "Reads data from", "Kafka Plugin")
-    Rel(cgui, saas_api, "Uploads validated data to", "HTTPS/REST")
+    Rel(cgui, datasource_any, "Reads data from", "Dynamic Data Plugin")
+    Rel(cgui, saas_api, "Uploads validated data to", "Dynamic Upload Plugin (HTTPS/REST)")
+    Rel(cgui, github, "Checks for updates", "HTTPS/JSON")
 ```
 
 ---
@@ -52,19 +51,21 @@ C4Container
     Person(user, "User", "A user of the c-gui application.")
     
     System_Boundary(cgui_boundary, "c-gui Application") {
-        Container(gui, "wxWidgets GUI", "C++23", "Provides the user interface for configuration, password entry, and monitoring progress.")
+        Container(gui, "wxWidgets GUI", "C++23", "Provides the user interface for topic/interface selection, password entry, and monitoring.")
         Container(core, "cgui_core Library", "C++23 Static Lib", "Contains the core business logic, configuration management, and background task scheduling.")
-        Container(plugin_system, "Plugin Interface", "C ABI", "Dynamically loads data source plugins at runtime.")
+        Container(plugin_system, "Plugin Loader", "C ABI", "Dynamically discovers and loads specialized plugins at runtime.")
     }
 
-    System_Ext(plugins, "Data Plugins", "Shared Libraries (.so/.dll)", "Implementations for CSV, DB, and Kafka data extraction.")
+    System_Ext(data_plugins, "Data Plugins", "Shared Libs", "Naming: <topic>_<type>_input.[so|dll]")
+    System_Ext(upload_plugins, "Upload Plugins", "Shared Libs", "Naming: <topic>_upload.[so|dll]")
     System_Ext(saas_api, "SaaS Endpoint", "REST API", "The destination for validated data.")
 
     Rel(user, gui, "Uses", "GUI")
     Rel(gui, core, "Delegates processing to", "C++ Method Calls")
-    Rel(core, plugin_system, "Loads and interfaces with", "ABI-stable C calls")
-    Rel(plugin_system, plugins, "Dynamically links", "dlopen/LoadLibrary")
-    Rel(core, saas_api, "Uploads data", "HTTPS/libcurl")
+    Rel(core, plugin_system, "Discovers and loads", "dlopen/LoadLibrary")
+    Rel(plugin_system, data_plugins, "Fetches raw data")
+    Rel(plugin_system, upload_plugins, "Transmits data")
+    Rel(upload_plugins, saas_api, "Uploads data", "HTTPS/libcurl")
 ```
 
 ---
@@ -78,41 +79,39 @@ C4Component
     title Component diagram for cgui_core
 
     Container_Boundary(core_boundary, "cgui_core Library") {
-        Component(app_controller, "AppController", "C++ Class", "Orchestrates the overall flow of the application.")
-        Component(config_manager, "ConfigManager", "C++ Class", "Handles decryption and management of INI settings via libsodium (crypto_aead_xchacha20poly1305_ietf).")
+        Component(app_controller, "AppController", "C++ Class", "Orchestrates the overall flow, manages session lifecycle and user identification.")
+        Component(config_manager, "ConfigManager", "C++ Class", "Handles decryption and management of INI settings (with quote stripping).")
+        Component(log_manager, "LogManager", "C++ Class", "Manages topic-based spdlog instances with a custom GUI callback sink.")
         Component(validator, "Validator", "C++ Class", "Validates incoming data against JSON schemas using nlohmann/json.")
-        Component(uploader, "Uploader", "C++ Class", "Uploads validated data to the SaaS endpoint using libcurl.")
-        Component(worker_threads, "Worker Threads", "std::jthread", "Executes background tasks for validation and uploading to keep the UI responsive.")
+        Component(uploader, "Uploader", "C++ Class", "Legacy/Generic upload utility (plugins preferred in v0.2.0).")
+        Component(gh_update, "GH Update Checker", "FetchContent", "Checks for new releases on GitHub.")
     }
 
     Component_Ext(gui, "wxWidgets GUI", "Front-end application window.")
-    Component_Ext(plugins, "Plugins Interface", "ABI-stable C factory interface (`create_plugin`/`destroy_plugin`).")
+    Component_Ext(plugins, "Plugins", "ABI-stable C factory interface.")
 
     Rel(gui, app_controller, "Starts/Stops tasks")
     Rel(app_controller, config_manager, "Reads secure config")
-    Rel(app_controller, worker_threads, "Dispatches background work to")
-    Rel(worker_threads, plugins, "Fetches raw data via")
-    Rel(worker_threads, validator, "Validates data with")
-    Rel(worker_threads, uploader, "Uploads valid data via")
-    Rel(worker_threads, gui, "Sends UI updates asynchronously via", "wxWindow::CallAfter")
+    Rel(app_controller, log_manager, "Registers GUI log sink")
+    Rel(app_controller, plugins, "Discovers and executes")
+    Rel(plugins, validator, "Validates data with")
+    Rel(gui, gh_update, "Triggered via About dialog")
 ```
 
 ---
 
 ## Key Architectural Decisions
 
-### 1. Security First
-- **No Plaintext Secrets:** Configuration files (`.ini`) containing API keys, database credentials, or SaaS endpoints are encrypted on disk using `libsodium`.
-- **In-Memory Security:** The user is prompted for a master password at runtime. This password is used to decrypt the configuration into memory and is never persisted to disk.
+### 1. Dual-Plugin Strategy (Mandatory)
+To support diverse data sources and complex SaaS API handshakes, each topic MUST be split into two specialized plugins:
+- **Data (Ingest) Plugins (`<topic>_<type>_input`):** Handle reading from specific sources (CSV, DB-Ora, DB-PG, Kafka) and converting to the internal JSON format.
+- **Upload (Output) Plugins (`<topic>_upload`):** Handle topic-specific API handshakes, payload formatting (wrapping), and secure transmission.
 
-### 2. Dual-Plugin Strategy
-- To support diverse data sources and complex SaaS API handshakes, each topic is managed by two specialized plugins:
-  - **Ingest Plugins (`<topic>_data`):** Responsible for reading data from sources (CSV, DB, Kafka) and converting it to the application's internal JSON format.
-  - **Upload Plugins (`<topic>_upload`):** Responsible for the SaaS-specific authentication flow (e.g., token negotiation), payload restructuring (e.g., wrapping in "records"), and secure transmission via libcurl.
-- This separation allows for independent development and testing of data acquisition vs. API integration logic.
-- All plugins are compiled as shared libraries (`.so` or `.dll`) and loaded at runtime via a pure C ABI.
+### 2. Convention-over-Configuration
+Plugins are discovered dynamically by scanning the configured directories. Filenames must follow the `<topic>_<interface>_input` or `<topic>_upload` naming convention to be recognized by the core. This eliminates the need for manual path registration in the INI file.
 
-### 3. Responsive UI (Threading)
-- Heavy operations such as reading data, validating large JSON payloads, and network I/O are strictly forbidden on the main thread.
-- `std::jthread` is utilized to spawn worker threads that process data in the background.
-- Communication back to the UI (e.g., progress bar updates, logging) is safely dispatched using `wxWidgets`'s `CallAfter` mechanism.
+### 3. User Audit & Traceability
+Every session and upload operation is tagged with the OS-logged-in user identity. This information is propagated to both the Core and Topic-specific logs, providing a clear audit trail for all data movements.
+
+### 4. Hardened Threading & Logging
+All I/O and heavy processing occur in background threads. The `LogManager` uses a custom `spdlog` sink that safely dispatches log messages to the GUI via `wxWindow::CallAfter`, ensuring real-time visibility without risking UI thread blocking or race conditions.

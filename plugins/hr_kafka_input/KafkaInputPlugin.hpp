@@ -24,13 +24,15 @@
 
 namespace cgui {
 
-class KafkaInputPlugin : public IPlugin {
+class KafkaInputPlugin : public IDataPlugin {
 public:
     KafkaInputPlugin() = default;
     ~KafkaInputPlugin() override = default;
 
     bool initialize(const nlohmann::json& config) override;
-    [[nodiscard]] std::string get_topic() const override;
+    [[nodiscard]] std::string get_topic() const override { return "HR"; }
+    [[nodiscard]] std::string get_version() const override { return "1.0.0"; }
+    [[nodiscard]] std::string get_interface_type() const override { return "kafka"; }
     std::vector<nlohmann::json> fetch_batch(size_t max_records) override;
     void shutdown() override;
 

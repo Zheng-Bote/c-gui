@@ -30,6 +30,7 @@ struct TopicMeta {
     std::string topic;
     std::filesystem::path schema_path;
     std::string upload_endpoint;
+    std::string upload_plugin;  ///< Name of the upload plugin (e.g., "hr_upload")
 };
 
 /**

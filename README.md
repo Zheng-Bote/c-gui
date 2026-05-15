@@ -1,15 +1,19 @@
 # c-gui
 
-c-gui is a C++23 desktop application designed for secure data validation and upload to SaaS endpoints. It features a plugin-based architecture for flexible data input (CSV, Database, Kafka) and utilizes `libsodium` for hardware-accelerated encryption of configuration secrets.
+c-gui is a C++23 desktop application designed for secure data validation and upload to SaaS endpoints. It features a robust **Dual-Plugin Strategy** for flexible data input and output, and utilizes `libsodium` for hardware-accelerated encryption of configuration secrets.
 
 ## Features
 
-- **Multi-source Data Input**: Load data from CSV files or via dynamic plugins (PostgreSQL, Kafka).
-- **Multi-target Data Output**: Upload data to multiple SaaS endpoints via dynamic plugins.
+- **Dual-Plugin Architecture**: Every data topic is handled by specialized Ingest (Input) and Upload (Output) plugins.
+- **Dynamic Interface Discovery**: Automatically detects available data interfaces (CSV, PostgreSQL, Oracle, Kafka) based on installed plugins.
+- **Topic-Aware UI**: GUI dynamically adapts its data loading options based on the selected topic and available plugins.
+- **Plugin Management**: Built-in dialog to inspect discovered plugins, their versions, and capabilities.
 - **JSON Schema Validation**: Rigorous validation of incoming data against predefined schemas.
 - **Secure Configuration**: INI files are encrypted on disk using XChaCha20-Poly1305 and Argon2id for password hashing.
+- **Update Notifications**: Automatic check for new versions via GitHub integration.
+- **Advanced Logging**: Real-time GUI status updates combined with persistent `spdlog` file rotation and OS user audit trails.
 - **Async Processing**: Background worker threads for validation and upload tasks to ensure a smooth UI experience.
-- **Cross-platform**: Supports Windows 11, Linux (and macOS).
+- **Cross-platform**: Native support for Windows 11 and Linux.
 
 ## Prerequisites
 

@@ -70,6 +70,7 @@ private:
     AppController* m_controller;
 
     wxComboBox* m_topic_choice;
+    wxChoice* m_interface_choice;
     wxButton* m_load_btn;
     wxButton* m_validate_btn;
     wxButton* m_upload_btn;
@@ -79,8 +80,9 @@ private:
 
     void on_exit(wxCommandEvent& event);
     void on_about(wxCommandEvent& event);
+    void on_manage_plugins(wxCommandEvent& event);
     void on_topic_selected(wxCommandEvent& event);
-    void on_load_csv(wxCommandEvent& event);
+    void on_load_data(wxCommandEvent& event);
     void on_validate(wxCommandEvent& event);
     void on_upload(wxCommandEvent& event);
 

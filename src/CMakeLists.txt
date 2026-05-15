@@ -52,6 +52,7 @@ target_link_libraries(cgui_core PUBLIC
     ValiJSON::valijson
     inih::inih
     spdlog::spdlog
+    gh_update_checker::gh_update_checker
 )
 
 # --- Executable ---
