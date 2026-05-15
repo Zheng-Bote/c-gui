@@ -46,7 +46,7 @@ struct PluginInfo {
     std::string topic;
     std::string type;    // "DATA" or "UPLOAD"
     std::string version;
-    std::string interface; // e.g., "csv" (for DATA only)
+    std::string interface_type; // e.g., "csv" (for DATA only)
     std::filesystem::path path;
 };
 

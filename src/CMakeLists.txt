@@ -56,7 +56,11 @@ target_link_libraries(cgui_core PUBLIC
 )
 
 # --- Executable ---
-add_executable(${PROJECT_NAME} main.cpp)
+if(WIN32)
+    add_executable(${PROJECT_NAME} WIN32 main.cpp)
+else()
+    add_executable(${PROJECT_NAME} main.cpp)
+endif()
 target_link_libraries(${PROJECT_NAME} PRIVATE cgui_core)
 
 # --- Encryption Tool ---

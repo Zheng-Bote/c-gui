@@ -52,6 +52,9 @@ FetchContent_Declare(
   GIT_TAG        v1.0.9
 )
 FetchContent_MakeAvailable(gh_update_checker)
+if(NOT TARGET gh_update_checker::gh_update_checker)
+    add_library(gh_update_checker::gh_update_checker ALIAS gh_update_checker)
+endif()
 
 # --- Conan Integration ---
 # When using Conan v2 with CMakeToolchain, we just use find_package()

@@ -222,7 +222,7 @@ void MainWindow::on_manage_plugins(wxCommandEvent &WXUNUSED(event)) {
     long index = list->InsertItem(i, wxString::FromUTF8(p.name));
     list->SetItem(index, 1, wxString::FromUTF8(p.topic));
     list->SetItem(index, 2, wxString::FromUTF8(p.type));
-    list->SetItem(index, 3, wxString::FromUTF8(p.interface));
+    list->SetItem(index, 3, wxString::FromUTF8(p.interface_type));
     list->SetItem(index, 4, wxString::FromUTF8(p.version));
   }
 

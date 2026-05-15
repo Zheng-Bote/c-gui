@@ -177,9 +177,9 @@ std::vector<std::string> AppController::get_available_interfaces(const std::stri
 
         if (filename.starts_with(prefix) && filename.ends_with(suffix)) {
             // Extract interface name: <topic>_<interface>_input.<ext>
-            std::string interface = filename.substr(prefix.length());
-            interface = interface.substr(0, interface.length() - suffix.length());
-            interfaces.push_back(interface);
+            std::string interface_name = filename.substr(prefix.length());
+            interface_name = interface_name.substr(0, interface_name.length() - suffix.length());
+            interfaces.push_back(interface_name);
         }
     }
     return interfaces;
@@ -235,7 +235,7 @@ std::vector<PluginInfo> AppController::get_all_plugins() const {
                 info.path = entry.path();
 
                 if (plugin->get_type() == PluginType::DATA) {
-                    info.interface = static_cast<IDataPlugin*>(plugin)->get_interface_type();
+                    info.interface_type = static_cast<IDataPlugin*>(plugin)->get_interface_type();
                 }
                 
                 logger->info("Discovered plugin: {} (Topic: {}, Version: {})", info.name, info.topic, info.version);

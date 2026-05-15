@@ -1,4 +1,18 @@
-# c-gui
+<div id="top" align="center">
+<h1>c-gui</h1>
+
+<p>Plugin-based Desktop-Client to collect data from different sources, validate and upload to SaaS</p>
+
+![GitHub License](https://img.shields.io/github/license/Zheng-Bote/c-gui)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey.svg)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/Zheng-Bote/c-gui?logo=GitHub)](https://github.com/Zheng-Bote/c-gui/releases)
+
+[Report Issue](https://github.com/Zheng-Bote/c-gui/issues) · [Request Feature](https://github.com/Zheng-Bote/c-gui/pulls)
+</div>
+
+## Description
+
+![CXX](https://img.shields.io/badge/C++-23-blue?logo=cplusplus)
 
 c-gui is a C++23 desktop application designed for secure data validation and upload to SaaS endpoints. It features a robust **Dual-Plugin Strategy** for flexible data input and output, and utilizes `libsodium` for hardware-accelerated encryption of configuration secrets.
 
@@ -89,6 +103,28 @@ cd build
 ctest --output-on-failure
 ```
 
-## License
+---
 
-Apache-2.0. See `LICENSE` and `NOTICE` for details.
+## 📄 Changelog
+
+For a detailed history of changes, see the [CHANGELOG.md](CHANGELOG.md).
+
+## 📜 License
+
+This project is licensed under the ![GitHub License](https://img.shields.io/github/license/Zheng-Bote/c-gui) License - see the LICENSE file for details.
+
+©️ Copyright (c) 2026 ZHENG Robert
+
+## 👤 Author
+
+[![Zheng Robert - Core Development](https://img.shields.io/badge/Github-Zheng_Robert-black?logo=github)](https://www.github.com/Zheng-Bote)
+
+### 🤝 Code Contributors
+
+[![Contributors](https://img.shields.io/github/contributors/Zheng-Bote/c-gui?color=dark-green)](https://img.shields.io/github/contributors/Zheng-Bote/c-gui)
+
+---
+
+**Happy coding!** 🚀 🖖
+
+<p align="right">(<a href="#top">back to top</a>)</p>
