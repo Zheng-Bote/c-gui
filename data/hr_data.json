@@ -1,6 +1,6 @@
 [
   {
-    "EmployeeNumber": 123456,
+    "EmployeeNumber": "123456",
     "SSNValue": "00000000",
     "FirstName": "Max",
     "LastName": "Mustermann",
@@ -15,7 +15,7 @@
     "Email": "max.mustermann@example.com"
   },
   {
-    "EmployeeNumber": 789101,
+    "EmployeeNumber": "789101",
     "SSNValue": "00000000",
     "FirstName": "Jane",
     "LastName": "Doe",

@@ -25,6 +25,7 @@ elseif(UNIX)
 endif()
 
 add_subdirectory(hr_csv_input)
+add_subdirectory(hr_json_input)
 add_subdirectory(hr_db-pg_input)
 add_subdirectory(hr_db-ora_input)
 add_subdirectory(hr_kafka_input)
