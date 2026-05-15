@@ -6,7 +6,7 @@
 #
 # @file conanfile.py
 # @brief Dependency management for c-gui
-# @version 1.0.0
+# @version 0.1.0
 # @date 2025-02-13
 #
 # @author ZHENG Robert (robert@hase-zheng.net)
@@ -18,7 +18,7 @@ from conan.tools.cmake import cmake_layout
 
 class CGuiRecipe(ConanFile):
     name = "c-gui"
-    version = "1.0.0"
+    version = "0.1.0"
     package_type = "application"
 
     # Binary configuration
