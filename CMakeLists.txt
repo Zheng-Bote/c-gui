@@ -16,7 +16,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 project(c-gui
-    VERSION 0.1.0
+    VERSION 0.2.0
     DESCRIPTION "C++23 desktop application for data validation and upload"
     HOMEPAGE_URL "https://github.com/Zheng-Bote/c-gui"
     LANGUAGES CXX
