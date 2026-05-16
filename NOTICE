@@ -39,6 +39,10 @@ This product includes software developed by third parties. The following compone
   License: MIT
   Attribution: Copyright (c) 2020 Prashanth Ganapathy.
 
+- cpp-httplib (>=0.44.0)
+  License: MIT
+  Attribution: Copyright (c) 2015 Yuji Kubo (https://github.com/yhirose/cpp-httplib).
+
 - gh-update-checker (>=1.1.1)
   License: LGPL-3.0
-  Attribution: Copyright (c) 2026 ZHENG Robert.
+  Attribution: Copyright (c) 2026 ZHENG Robert (https://github.com/Zheng-Bote/gh-update-checker).
