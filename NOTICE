@@ -39,6 +39,6 @@ This product includes software developed by third parties. The following compone
   License: MIT
   Attribution: Copyright (c) 2020 Prashanth Ganapathy.
 
-- gh-update-checker
+- gh-update-checker (>=1.1.1)
   License: LGPL-3.0
   Attribution: Copyright (c) 2026 ZHENG Robert.

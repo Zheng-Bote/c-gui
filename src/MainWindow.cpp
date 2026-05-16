@@ -31,7 +31,9 @@ enum {
   ID_LOAD_DATA,
   ID_VALIDATE,
   ID_UPLOAD,
-  ID_MANAGE_PLUGINS
+  ID_MANAGE_PLUGINS,
+  ID_DATE_FORMAT,
+  ID_DATE_DELIMITER
 };
 
 wxBEGIN_EVENT_TABLE(MainWindow, wxFrame)
@@ -42,7 +44,9 @@ wxBEGIN_EVENT_TABLE(MainWindow, wxFrame)
             EVT_BUTTON(ID_LOAD_DATA, MainWindow::on_load_data)
                 EVT_BUTTON(ID_VALIDATE, MainWindow::on_validate)
                     EVT_BUTTON(ID_UPLOAD, MainWindow::on_upload)
-                        wxEND_EVENT_TABLE()
+                        EVT_CHOICE(ID_DATE_FORMAT, MainWindow::on_date_format_changed)
+                            EVT_CHOICE(ID_DATE_DELIMITER, MainWindow::on_date_format_changed)
+                                wxEND_EVENT_TABLE()
 
                             MainWindow::MainWindow(const wxString &title,
                                                    AppController *controller)
@@ -90,6 +94,29 @@ wxBEGIN_EVENT_TABLE(MainWindow, wxFrame)
   top_sizer->Add(m_load_btn, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
 
   main_sizer->Add(top_sizer, 0, wxEXPAND);
+
+  // Date Format Bar
+  auto *date_sizer = new wxBoxSizer(wxHORIZONTAL);
+  date_sizer->Add(new wxStaticText(this, wxID_ANY, "Date Format:"), 0,
+                  wxALL | wxALIGN_CENTER_VERTICAL, 5);
+
+  m_date_format_choice = new wxChoice(this, ID_DATE_FORMAT);
+  m_date_format_choice->Append("dd.mm.yyyy");
+  m_date_format_choice->Append("yyyy.mm.dd");
+  m_date_format_choice->Append("mm.dd.yyyy");
+  m_date_format_choice->SetSelection(0);
+  date_sizer->Add(m_date_format_choice, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+
+  date_sizer->Add(new wxStaticText(this, wxID_ANY, "Delimiter:"), 0,
+                  wxALL | wxALIGN_CENTER_VERTICAL, 5);
+  m_date_delimiter_choice = new wxChoice(this, ID_DATE_DELIMITER);
+  m_date_delimiter_choice->Append(".");
+  m_date_delimiter_choice->Append("/");
+  m_date_delimiter_choice->Append("-");
+  m_date_delimiter_choice->SetSelection(0);
+  date_sizer->Add(m_date_delimiter_choice, 0, wxALL | wxALIGN_CENTER_VERTICAL, 5);
+
+  main_sizer->Add(date_sizer, 0, wxEXPAND);
 
   // Data Preview
   main_sizer->Add(
@@ -187,21 +214,45 @@ void MainWindow::on_about(wxCommandEvent &WXUNUSED(event)) {
       rz::config::AUTHOR,
       rz::config::LICENSE);
 
-  try {
-    auto result = ghupdate::check_github_update(
-        std::string(rz::config::PROJECT_HOMEPAGE_URL),
-        std::string(rz::config::VERSION));
-
-    if (result.hasUpdate) {
-      about_msg += wxString::Format("\n\nUpdate available: %s", result.latestVersion);
-    } else {
-      about_msg += "\n\nYou are running the latest version.";
-    }
-  } catch (const std::exception &e) {
-    about_msg += wxString::Format("\n\n(Update check failed: %s)", e.what());
+  // Use the new async feature from gh-update-checker v1.1.0
+  std::string repo_url(rz::config::PROJECT_HOMEPAGE_URL);
+  
+  // Sanitize URL: gh-update-checker v1.1.0 regex is strict: https://github.com/owner/repo
+  // It fails on www.github.com or missing https://
+  if (repo_url.find("www.github.com") != std::string::npos) {
+      size_t pos = repo_url.find("www.");
+      repo_url.erase(pos, 4);
+  }
+  if (repo_url.find("http://") == 0) {
+      repo_url.replace(0, 7, "https://");
+  } else if (repo_url.find("https://") != 0) {
+      repo_url = "https://github.com/" + repo_url; // Assume owner/repo if prefix is missing
   }
 
-  wxMessageBox(about_msg, "About C GUI", wxOK | wxICON_INFORMATION);
+  std::string local_version(rz::config::VERSION);
+
+  // We run this in a separate thread to keep the UI responsive
+  std::thread([this, about_msg, repo_url, local_version]() {
+    try {
+      auto future = ghupdate::check_github_update_async(repo_url, local_version);
+      auto result = future.get();
+
+      this->CallAfter([this, about_msg, result]() {
+        wxString final_msg = about_msg;
+        if (result.hasUpdate) {
+          final_msg += wxString::Format("\n\nUpdate available: %s", result.latestVersion);
+        } else {
+          final_msg += "\n\nYou are running the latest version.";
+        }
+        wxMessageBox(final_msg, "About C GUI", wxOK | wxICON_INFORMATION);
+      });
+    } catch (const std::exception &e) {
+      this->CallAfter([this, about_msg, error_msg = std::string(e.what())]() {
+        wxString final_msg = about_msg + wxString::Format("\n\n(Update check failed: %s)", error_msg);
+        wxMessageBox(final_msg, "About C GUI", wxOK | wxICON_INFORMATION);
+      });
+    }
+  }).detach();
 }
 
 void MainWindow::on_manage_plugins(wxCommandEvent &WXUNUSED(event)) {
@@ -236,6 +287,32 @@ void MainWindow::on_manage_plugins(wxCommandEvent &WXUNUSED(event)) {
 void MainWindow::on_topic_selected(wxCommandEvent &event) {
   std::string topic = event.GetString().ToStdString();
   m_controller->select_topic(topic);
+
+  // Synchronize date format UI
+  std::string effective_format = m_controller->get_effective_date_format(topic);
+  if (!effective_format.empty()) {
+      // Simple parser: check for common delimiters
+      std::string delimiter = ".";
+      if (effective_format.find('/') != std::string::npos) delimiter = "/";
+      else if (effective_format.find('-') != std::string::npos) delimiter = "-";
+
+      // Reconstruct base format (with dots for choice selection)
+      std::string base_format = effective_format;
+      std::replace(base_format.begin(), base_format.end(), delimiter[0], '.');
+
+      int format_idx = m_date_format_choice->FindString(wxString::FromUTF8(base_format));
+      if (format_idx != wxNOT_FOUND) {
+          m_date_format_choice->SetSelection(format_idx);
+      }
+
+      int delim_idx = m_date_delimiter_choice->FindString(wxString::FromUTF8(delimiter));
+      if (delim_idx != wxNOT_FOUND) {
+          m_date_delimiter_choice->SetSelection(delim_idx);
+      }
+      
+      // Update controller with current effective format
+      m_controller->set_date_format(effective_format);
+  }
 
   // Clear UI state for new topic
   m_log_ctrl->Clear();
@@ -283,9 +360,11 @@ void MainWindow::on_load_data(wxCommandEvent &WXUNUSED(event)) {
       }
       path_or_conn = default_val;
   } else {
-      if (interface_name == "csv") {
-        wxFileDialog openFileDialog(this, _("Open CSV file"), "", "",
-                                    "CSV files (*.csv)|*.csv",
+      if (interface_name == "csv" || interface_name == "json") {
+        wxString title = (interface_name == "csv") ? _("Open CSV file") : _("Open JSON file");
+        wxString filter = (interface_name == "csv") ? "CSV files (*.csv)|*.csv" : "JSON files (*.json)|*.json";
+        wxFileDialog openFileDialog(this, title, "", "",
+                                    filter,
                                     wxFD_OPEN | wxFD_FILE_MUST_EXIST);
         if (!default_val.empty()) {
             openFileDialog.SetPath(wxString::FromUTF8(default_val));
@@ -314,6 +393,17 @@ void MainWindow::on_validate(wxCommandEvent &WXUNUSED(event)) {
 
 void MainWindow::on_upload(wxCommandEvent &WXUNUSED(event)) {
   m_controller->start_upload();
+}
+
+void MainWindow::on_date_format_changed(wxCommandEvent &WXUNUSED(event)) {
+    wxString base_format = m_date_format_choice->GetString(m_date_format_choice->GetSelection());
+    wxString delimiter = m_date_delimiter_choice->GetString(m_date_delimiter_choice->GetSelection());
+    
+    // Replace dots with selected delimiter
+    wxString final_format = base_format;
+    final_format.Replace(".", delimiter);
+    
+    m_controller->set_date_format(final_format.ToStdString());
 }
 
 } // namespace cgui

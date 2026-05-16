@@ -7,8 +7,8 @@
  *
  * @file HrUploadPlugin.hpp
  * @brief Implementation of HR-specific upload plugin.
- * @version 1.0.0
- * @date 2026-05-15
+ * @version 1.1.0
+ * @date 2026-05-16
  *
  * @author ZHENG Robert (robert@hase-zheng.net)
  * @copyright Copyright (c) 2026 ZHENG Robert
@@ -34,7 +34,7 @@ public:
 
     bool initialize(const nlohmann::json& config) override;
     [[nodiscard]] std::string get_topic() const override { return "HR"; }
-    [[nodiscard]] std::string get_version() const override { return "1.0.0"; }
+    [[nodiscard]] std::string get_version() const override { return "1.1.0"; }
     std::expected<void, std::string> upload(const nlohmann::json& data) override;
     void shutdown() override;
 

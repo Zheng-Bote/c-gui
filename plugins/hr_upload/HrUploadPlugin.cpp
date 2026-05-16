@@ -41,9 +41,9 @@ size_t HrUploadPlugin::write_callback(void* contents, size_t size, size_t nmemb,
 }
 
 std::expected<void, std::string> HrUploadPlugin::upload(const nlohmann::json& data) {
-    // HR-specific formatting
+    // HR-specific formatting with defaults
     nlohmann::json upload_payload = nlohmann::json::object();
-    upload_payload["options"] = {
+    nlohmann::json options = {
         {"updateExistingRecords", "true"},
         {"insertBaseTables", "true"},
         {"forceLookupTableUpdate", "true"},
@@ -52,6 +52,15 @@ std::expected<void, std::string> HrUploadPlugin::upload(const nlohmann::json& da
         {"mergeRecordsWithMatchingSsn", "false"},
         {"dateFormat", "dd.mm.yyyy"}
     };
+
+    // Override with config from INI (via AppController)
+    if (m_config.contains("options") && m_config["options"].is_object()) {
+        for (auto& [key, value] : m_config["options"].items()) {
+            options[key] = value;
+        }
+    }
+
+    upload_payload["options"] = options;
     upload_payload["records"] = data;
 
     // Perform upload using libcurl

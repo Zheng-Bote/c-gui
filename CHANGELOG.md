@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-05-16
+
+### Added
+- **JSON Input Support**: Implemented a file selection dialog for JSON input plugins, similar to the CSV functionality.
+- **Configurable Upload Payloads**: 
+  - Topics can now override upload payload options via the INI file (`[topics.<Topic>.options]`).
+  - Added support for topic-specific `dateFormat` presets in the configuration.
+- **Flexible Date Formatting UI**:
+  - Added new GUI controls to select date component order and delimiters.
+  - Automatic synchronization of date format settings when switching topics.
+  - Dynamic merging of GUI settings and INI overrides during the upload process.
+- **Modernized Update Checker**: 
+  - Upgraded `gh-update-checker` to v1.1.0.
+  - Implemented asynchronous update checks to keep the UI responsive.
+  - Added URL sanitization to handle `www.` and protocol variations for more robust GitHub API calls.
+
+### Changed
+- **Build System**: Cleaned up `CMakeUserPresets.json` to avoid duplicate preset errors from nested build directories.
+- **Sample Configuration**: Exhaustively updated `sample.ini` with documentation and examples for all new features.
+
 ## [0.2.0] - 2026-05-15
 
 ### Added

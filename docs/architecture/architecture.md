@@ -1,6 +1,6 @@
 # c-gui Architecture Documentation
 
-This document provides a comprehensive overview of the `c-gui` application architecture (v0.2.0). It uses the [C4 model](https://c4model.com/) to describe the system at various levels of abstraction.
+This document provides a comprehensive overview of the `c-gui` application architecture (v0.3.0). It uses the [C4 model](https://c4model.com/) to describe the system at various levels of abstraction.
 
 ## Overview
 
@@ -13,7 +13,7 @@ This document provides a comprehensive overview of the `c-gui` application archi
 - **Networking:** libcurl
 - **Data Handling:** nlohmann/json
 - **Plugin System:** ABI-stable C interface with dynamic discovery
-- **Update Checker:** GitHub API integration
+- **Update Checker:** GitHub API integration (v1.1.0, async)
 
 ---
 
@@ -28,14 +28,15 @@ C4Context
     Person(user, "User", "A user of the c-gui application.")
     System(cgui, "c-gui Application", "Desktop application for data validation and upload.")
     
-    System_Ext(datasource_any, "Data Sources", "CSV, PostgreSQL, Oracle, Kafka, etc.")
+    System_Ext(datasource_any, "Data Sources", "CSV, JSON, PostgreSQL, Oracle, Kafka, etc.")
     System_Ext(saas_api, "SaaS Endpoint", "Target SaaS API for data upload.")
     System_Ext(github, "GitHub", "Project repository for update checks.")
 
-    Rel(user, cgui, "Configures and triggers processing, inputs password")
+    Rel(user, cgui, "Configures and triggers processing, inputs password, selects date format")
+    Rel(user, cgui, "Selects JSON/CSV files via dialog")
     Rel(cgui, datasource_any, "Reads data from", "Dynamic Data Plugin")
     Rel(cgui, saas_api, "Uploads validated data to", "Dynamic Upload Plugin (HTTPS/REST)")
-    Rel(cgui, github, "Checks for updates", "HTTPS/JSON")
+    Rel(cgui, github, "Checks for updates (Async)", "HTTPS/JSON")
 ```
 
 ---
@@ -51,7 +52,7 @@ C4Container
     Person(user, "User", "A user of the c-gui application.")
     
     System_Boundary(cgui_boundary, "c-gui Application") {
-        Container(gui, "wxWidgets GUI", "C++23", "Provides the user interface for topic/interface selection, password entry, and monitoring.")
+        Container(gui, "wxWidgets GUI", "C++23", "Provides the user interface for topic/interface selection, password entry, date format config, and monitoring.")
         Container(core, "cgui_core Library", "C++23 Static Lib", "Contains the core business logic, configuration management, and background task scheduling.")
         Container(plugin_system, "Plugin Loader", "C ABI", "Dynamically discovers and loads specialized plugins at runtime.")
     }
@@ -79,23 +80,23 @@ C4Component
     title Component diagram for cgui_core
 
     Container_Boundary(core_boundary, "cgui_core Library") {
-        Component(app_controller, "AppController", "C++ Class", "Orchestrates the overall flow, manages session lifecycle and user identification.")
+        Component(app_controller, "AppController", "C++ Class", "Orchestrates the overall flow, manages session lifecycle, merges topic-specific options, and handles date formatting.")
         Component(config_manager, "ConfigManager", "C++ Class", "Handles decryption and management of INI settings (with quote stripping).")
         Component(log_manager, "LogManager", "C++ Class", "Manages topic-based spdlog instances with a custom GUI callback sink.")
         Component(validator, "Validator", "C++ Class", "Validates incoming data against JSON schemas using nlohmann/json.")
-        Component(uploader, "Uploader", "C++ Class", "Legacy/Generic upload utility (plugins preferred in v0.2.0).")
-        Component(gh_update, "GH Update Checker", "FetchContent", "Checks for new releases on GitHub.")
+        Component(uploader, "Uploader", "C++ Class", "Legacy/Generic upload utility (plugins preferred in v0.3.0).")
+        Component(gh_update, "GH Update Checker", "FetchContent", "Checks for new releases on GitHub (v1.1.0, asynchronous).")
     }
 
-    Component_Ext(gui, "wxWidgets GUI", "Front-end application window.")
+    Component_Ext(gui, "wxWidgets GUI", "Front-end application window with date format controls.")
     Component_Ext(plugins, "Plugins", "ABI-stable C factory interface.")
 
-    Rel(gui, app_controller, "Starts/Stops tasks")
-    Rel(app_controller, config_manager, "Reads secure config")
+    Rel(gui, app_controller, "Starts/Stops tasks, sets date format")
+    Rel(app_controller, config_manager, "Reads secure config & topic-specific options")
     Rel(app_controller, log_manager, "Registers GUI log sink")
-    Rel(app_controller, plugins, "Discovers and executes")
+    Rel(app_controller, plugins, "Discovers and executes with merged options")
     Rel(plugins, validator, "Validates data with")
-    Rel(gui, gh_update, "Triggered via About dialog")
+    Rel(gui, gh_update, "Triggered via About dialog (non-blocking)")
 ```
 
 ---
@@ -104,14 +105,15 @@ C4Component
 
 ### 1. Dual-Plugin Strategy (Mandatory)
 To support diverse data sources and complex SaaS API handshakes, each topic MUST be split into two specialized plugins:
-- **Data (Ingest) Plugins (`<topic>_<type>_input`):** Handle reading from specific sources (CSV, DB-Ora, DB-PG, Kafka) and converting to the internal JSON format.
+- **Data (Ingest) Plugins (`<topic>_<type>_input`):** Handle reading from specific sources (CSV, JSON, DB-Ora, DB-PG, Kafka) and converting to the internal JSON format.
 - **Upload (Output) Plugins (`<topic>_upload`):** Handle topic-specific API handshakes, payload formatting (wrapping), and secure transmission.
 
-### 2. Convention-over-Configuration
-Plugins are discovered dynamically by scanning the configured directories. Filenames must follow the `<topic>_<interface>_input` or `<topic>_upload` naming convention to be recognized by the core. This eliminates the need for manual path registration in the INI file.
+### 2. Topic-Specific Payload Overrides (v0.3.0)
+The application now supports overriding the upload payload options per topic via the INI file. The `AppController` merges global settings with `[topics.<TopicName>.options]` before initializing the upload plugin.
 
-### 3. User Audit & Traceability
-Every session and upload operation is tagged with the OS-logged-in user identity. This information is propagated to both the Core and Topic-specific logs, providing a clear audit trail for all data movements.
+### 3. Flexible Date Formatting (v0.3.0)
+The GUI allows users to select date component order and delimiters. These settings are synchronized with topic-specific INI defaults and passed to the upload plugin, which prioritizes them over hardcoded defaults.
 
-### 4. Hardened Threading & Logging
-All I/O and heavy processing occur in background threads. The `LogManager` uses a custom `spdlog` sink that safely dispatches log messages to the GUI via `wxWindow::CallAfter`, ensuring real-time visibility without risking UI thread blocking or race conditions.
+### 4. Non-Blocking Update Checks (v1.1.0 Lib)
+By utilizing the asynchronous API of the `gh-update-checker` library, update checks no longer freeze the UI thread, ensuring a modern and responsive user experience.
+

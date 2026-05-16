@@ -71,6 +71,8 @@ private:
 
     wxComboBox* m_topic_choice;
     wxChoice* m_interface_choice;
+    wxChoice* m_date_format_choice;
+    wxChoice* m_date_delimiter_choice;
     wxButton* m_load_btn;
     wxButton* m_validate_btn;
     wxButton* m_upload_btn;
@@ -85,6 +87,7 @@ private:
     void on_load_data(wxCommandEvent& event);
     void on_validate(wxCommandEvent& event);
     void on_upload(wxCommandEvent& event);
+    void on_date_format_changed(wxCommandEvent& event);
 
     wxDECLARE_EVENT_TABLE();
 };

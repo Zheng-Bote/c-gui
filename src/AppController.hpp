@@ -80,7 +80,20 @@ public:
     void select_topic(const std::string& topic);
 
     /**
-     * @brief Get available data interfaces for a topic.
+     * @brief Set the date format for upload.
+     * @param format Date format string (e.g., "dd.mm.yyyy").
+     */
+    void set_date_format(const std::string& format);
+
+    /**
+     * @brief Get the effective date format for a topic.
+     * @param topic Topic name.
+     * @return Date format string.
+     */
+    [[nodiscard]] std::string get_effective_date_format(const std::string& topic) const;
+
+    /**
+     * @brief Get available interfaces for a topic.
      * @param topic Topic name.
      * @return Vector of interface names (e.g., "csv", "db-pg").
      */
@@ -149,6 +162,7 @@ private:
 
     MainWindow* m_window = nullptr;
     std::string m_current_topic;
+    std::string m_date_format = "dd.mm.yyyy";
     nlohmann::json m_current_data;
     nlohmann::json m_preview_data;
 

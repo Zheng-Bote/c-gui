@@ -19,12 +19,15 @@ c-gui is a C++23 desktop application designed for secure data validation and upl
 ## Features
 
 - **Dual-Plugin Architecture**: Every data topic is handled by specialized Ingest (Input) and Upload (Output) plugins.
-- **Dynamic Interface Discovery**: Automatically detects available data interfaces (CSV, PostgreSQL, Oracle, Kafka) based on installed plugins.
-- **Topic-Aware UI**: GUI dynamically adapts its data loading options based on the selected topic and available plugins.
+- **Dynamic Interface Discovery**: Automatically detects available data interfaces (CSV, JSON, PostgreSQL, Oracle, Kafka) based on installed plugins.
+- **Topic-Aware UI**: GUI dynamically adapts its data loading options and date format settings based on the selected topic and available plugins.
+- **File Dialog Support**: Seamlessly browse for CSV and JSON input files with pre-configured default path suggestions.
+- **Configurable Upload Payloads**: Override plugin-specific upload options per topic via INI configuration.
+- **Flexible Date Formatting**: Customize date component order and delimiters directly in the GUI.
 - **Plugin Management**: Built-in dialog to inspect discovered plugins, their versions, and capabilities.
 - **JSON Schema Validation**: Rigorous validation of incoming data against predefined schemas.
 - **Secure Configuration**: INI files are encrypted on disk using XChaCha20-Poly1305 and Argon2id for password hashing.
-- **Update Notifications**: Automatic check for new versions via GitHub integration.
+- **Update Notifications**: Non-blocking check for new versions via asynchronous GitHub integration (v1.1.0).
 - **Advanced Logging**: Real-time GUI status updates combined with persistent `spdlog` file rotation and OS user audit trails.
 - **Async Processing**: Background worker threads for validation and upload tasks to ensure a smooth UI experience.
 - **Cross-platform**: Native support for Windows 11 and Linux.

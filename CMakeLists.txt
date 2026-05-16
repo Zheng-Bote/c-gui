@@ -6,7 +6,7 @@
 #
 # @file CMakeLists.txt
 # @brief Main build configuration
-# @version 0.2.0
+# @version 0.3.0
 # @date 2025-02-13
 #
 # @author ZHENG Robert (robert@hase-zheng.net)
@@ -16,7 +16,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 project(c-gui
-    VERSION 0.2.0
+    VERSION 0.3.0
     DESCRIPTION "C++23 desktop application for data validation and upload"
     HOMEPAGE_URL "https://github.com/Zheng-Bote/c-gui"
     LANGUAGES CXX
@@ -49,7 +49,7 @@ include(FetchContent)
 FetchContent_Declare(
   gh_update_checker
   GIT_REPOSITORY https://github.com/Zheng-Bote/gh-update-checker.git
-  GIT_TAG        v1.0.9
+  GIT_TAG        v1.1.1
 )
 FetchContent_MakeAvailable(gh_update_checker)
 if(NOT TARGET gh_update_checker::gh_update_checker)

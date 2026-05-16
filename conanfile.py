@@ -20,7 +20,7 @@ import os
 
 class CGuiRecipe(ConanFile):
     name = "c-gui"
-    version = "0.2.0"
+    version = "0.3.0"
     package_type = "application"
 
     # Binary configuration

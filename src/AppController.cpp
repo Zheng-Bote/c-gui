@@ -160,6 +160,22 @@ void AppController::select_topic(const std::string& topic) {
     LogManager::get_instance().get_core_logger()->info("Topic selected: {}", topic);
 }
 
+void AppController::set_date_format(const std::string& format) {
+    m_date_format = format;
+    update_log(std::format("Date format set to: {}", format));
+}
+
+std::string AppController::get_effective_date_format(const std::string& topic) const {
+    const auto& config = m_config_manager->get_config();
+    if (config.contains("topics") && config["topics"].contains(topic)) {
+        const auto& topic_config = config["topics"][topic];
+        if (topic_config.contains("options") && topic_config["options"].contains("dateFormat")) {
+            return topic_config["options"]["dateFormat"].get<std::string>();
+        }
+    }
+    return m_date_format;
+}
+
 std::vector<std::string> AppController::get_available_interfaces(const std::string& topic) const {
     std::vector<std::string> interfaces;
     if (!std::filesystem::exists(m_data_plugins_dir)) return interfaces;
@@ -453,6 +469,23 @@ void AppController::start_upload() {
         nlohmann::json plugin_config = config; // Give it full config
         plugin_config["topic"] = m_current_topic;
         plugin_config["upload_endpoint"] = meta->upload_endpoint;
+        plugin_config["options"] = nlohmann::json::object();
+        plugin_config["options"]["dateFormat"] = m_date_format;
+
+        // Merge topic-specific overrides (like 'options')
+        if (config.contains("topics") && config["topics"].contains(m_current_topic)) {
+            const auto& topic_cfg = config["topics"][m_current_topic];
+            for (auto it = topic_cfg.begin(); it != topic_cfg.end(); ++it) {
+                if (it.key() == "options" && it.value().is_object()) {
+                    // Merge options specifically
+                    for (auto opt_it = it.value().begin(); opt_it != it.value().end(); ++opt_it) {
+                        plugin_config["options"][opt_it.key()] = opt_it.value();
+                    }
+                } else {
+                    plugin_config[it.key()] = it.value();
+                }
+            }
+        }
 
         if (!upload_plugin->initialize(plugin_config)) {
             logger->error("Failed to initialize upload plugin {}", plugin_path.string());
