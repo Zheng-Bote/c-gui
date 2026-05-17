@@ -14,6 +14,7 @@
 # @license Apache-2.0
 
 find_package(Catch2 3 REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 # --- Dummy Plugin ---
 add_library(dummy_plugin MODULE dummy_plugin.cpp)

@@ -51,6 +51,15 @@ private:
     std::string m_access_token;
     std::chrono::system_clock::time_point m_access_expiry;
 
+    // SSL Settings
+    bool m_verify_ssl = true;
+    std::string m_ssl_ca_path;
+
+    /**
+     * @brief Sets common CURL options including SSL settings.
+     */
+    void setup_curl_common(void* curl_handle);
+
     /**
      * @brief Ensures a valid access token is available.
      */

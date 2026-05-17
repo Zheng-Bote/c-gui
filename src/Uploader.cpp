@@ -69,6 +69,14 @@ std::expected<void, std::string> Uploader::upload_sync(const std::string& url, c
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
 
+    if (!m_verify_ssl) {
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    }
+    if (!m_ssl_ca_path.empty()) {
+        curl_easy_setopt(curl, CURLOPT_CAINFO, m_ssl_ca_path.c_str());
+    }
+
     CURLcode res = curl_easy_perform(curl);
     long response_code = 0;
     if (res == CURLE_OK) {
@@ -101,6 +109,11 @@ void Uploader::upload_async(const std::string& url, const nlohmann::json& payloa
     std::thread([this, url, payload, callback, bearer_token]() {
         callback(upload_sync(url, payload, bearer_token));
     }).detach();
+}
+
+void Uploader::configure_ssl(bool verify_ssl, const std::string& ca_path) {
+    m_verify_ssl = verify_ssl;
+    m_ssl_ca_path = ca_path;
 }
 
 } // namespace cgui

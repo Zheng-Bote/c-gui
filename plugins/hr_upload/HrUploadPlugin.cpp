@@ -59,7 +59,33 @@ bool HrUploadPlugin::initialize(const nlohmann::json& config) {
         return false;
     }
 
+    // SSL Settings
+    if (config.contains("verify_ssl")) {
+        std::string val = config["verify_ssl"].get<std::string>();
+        m_verify_ssl = (val == "true" || val == "1" || val == "yes");
+    } else if (config.contains("auth") && config["auth"].contains("verify_ssl")) {
+        std::string val = config["auth"]["verify_ssl"].get<std::string>();
+        m_verify_ssl = (val == "true" || val == "1" || val == "yes");
+    }
+
+    if (config.contains("ssl_ca_path") && !config["ssl_ca_path"].is_null()) {
+        m_ssl_ca_path = config["ssl_ca_path"].get<std::string>();
+    } else if (config.contains("auth") && config["auth"].contains("ssl_ca_path") && !config["auth"]["ssl_ca_path"].is_null()) {
+        m_ssl_ca_path = config["auth"]["ssl_ca_path"].get<std::string>();
+    }
+
     return true;
+}
+
+void HrUploadPlugin::setup_curl_common(void* curl_handle) {
+    CURL* curl = static_cast<CURL*>(curl_handle);
+    if (!m_verify_ssl) {
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+    }
+    if (!m_ssl_ca_path.empty()) {
+        curl_easy_setopt(curl, CURLOPT_CAINFO, m_ssl_ca_path.c_str());
+    }
 }
 
 size_t HrUploadPlugin::write_callback(void* contents, size_t size, size_t nmemb, void* userp) {
@@ -87,6 +113,8 @@ std::expected<void, std::string> HrUploadPlugin::ensure_authenticated() {
 std::expected<void, std::string> HrUploadPlugin::perform_refresh() {
     CURL* curl = curl_easy_init();
     if (!curl) return std::unexpected("Failed to initialize curl");
+
+    setup_curl_common(curl);
 
     std::string url = m_base_url + "/api/refreshtoken";
     nlohmann::json payload = {
@@ -131,6 +159,8 @@ std::expected<void, std::string> HrUploadPlugin::perform_refresh() {
 std::expected<void, std::string> HrUploadPlugin::fetch_access_token() {
     CURL* curl = curl_easy_init();
     if (!curl) return std::unexpected("Failed to initialize curl");
+
+    setup_curl_common(curl);
 
     std::string url = m_base_url + "/api/token/";
     std::string response_string;
@@ -204,6 +234,8 @@ std::expected<void, std::string> HrUploadPlugin::upload(const nlohmann::json& da
 
     CURL* curl = curl_easy_init();
     if (!curl) return std::unexpected("Failed to initialize curl");
+
+    setup_curl_common(curl);
 
     std::string url = m_base_url + "/api/employeeimport";
     std::string payload_str = upload_payload.dump();

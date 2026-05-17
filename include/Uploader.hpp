@@ -54,7 +54,17 @@ public:
                       std::function<void(std::expected<void, std::string>)> callback,
                       const std::string& bearer_token = "");
 
+    /**
+     * @brief Configure SSL settings.
+     * @param verify_ssl Whether to verify SSL certificates.
+     * @param ca_path Path to a CA bundle file.
+     */
+    void configure_ssl(bool verify_ssl, const std::string& ca_path = "");
+
 private:
+    bool m_verify_ssl = true;
+    std::string m_ssl_ca_path;
+
     static size_t write_callback(void* contents, size_t size, size_t nmemb, void* userp);
 };
 
