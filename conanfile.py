@@ -51,15 +51,11 @@ class CGuiRecipe(ConanFile):
         cmake_layout(self)
 
     def generate(self):
-        # This copies DLLs to the same folder as the executable for convenience
-        # Note: In multi-config (VS), this might need adjustment to the specific config folder
-        build_type = str(self.settings.build_type)
-        output_dir = os.path.join(self.build_folder, "src", build_type)
-        
-        for dep in self.dependencies.values():
-            if dep.cpp_info.bindirs:
-                for bindir in dep.cpp_info.bindirs:
-                    copy(self, "*.dll", bindir, output_dir)
-                    copy(self, "*.dylib", bindir, output_dir)
-                    copy(self, "*.so", bindir, output_dir)
+        # This copies DLLs to the central 'bin' folder on Windows
+        if self.settings.os == "Windows":
+            output_dir = os.path.join(self.build_folder, "bin")
+            for dep in self.dependencies.values():
+                if dep.cpp_info.bindirs:
+                    for bindir in dep.cpp_info.bindirs:
+                        copy(self, "*.dll", bindir, output_dir)
 

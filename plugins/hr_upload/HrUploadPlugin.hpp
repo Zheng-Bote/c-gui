@@ -6,9 +6,9 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * @file HrUploadPlugin.hpp
- * @brief Implementation of HR-specific upload plugin.
- * @version 1.1.0
- * @date 2026-05-16
+ * @brief Implementation of HR-specific upload plugin with Cority Auth flow.
+ * @version 1.2.0
+ * @date 2026-05-17
  *
  * @author ZHENG Robert (robert@hase-zheng.net)
  * @copyright Copyright (c) 2026 ZHENG Robert
@@ -20,12 +20,14 @@
 
 #include "PluginAPI.hpp"
 #include <string>
+#include <chrono>
+#include <optional>
 
 namespace cgui {
 
 /**
  * @class HrUploadPlugin
- * @brief Handles HR-specific payload formatting and upload.
+ * @brief Handles HR-specific payload formatting and complex Cority authentication flow.
  */
 class HrUploadPlugin : public IUploadPlugin {
 public:
@@ -34,14 +36,35 @@ public:
 
     bool initialize(const nlohmann::json& config) override;
     [[nodiscard]] std::string get_topic() const override { return "HR"; }
-    [[nodiscard]] std::string get_version() const override { return "1.1.0"; }
+    [[nodiscard]] std::string get_version() const override { return "1.2.0"; }
     std::expected<void, std::string> upload(const nlohmann::json& data) override;
     void shutdown() override;
 
 private:
     nlohmann::json m_config;
-    std::string m_endpoint;
-    std::string m_bearer_token;
+    std::string m_base_url;
+    std::string m_login;
+    std::string m_password;
+    
+    // Auth state
+    std::string m_refresh_token;
+    std::string m_access_token;
+    std::chrono::system_clock::time_point m_access_expiry;
+
+    /**
+     * @brief Ensures a valid access token is available.
+     */
+    std::expected<void, std::string> ensure_authenticated();
+
+    /**
+     * @brief Step 1: POST /api/refreshtoken
+     */
+    std::expected<void, std::string> perform_refresh();
+
+    /**
+     * @brief Step 2: GET /api/token/
+     */
+    std::expected<void, std::string> fetch_access_token();
 
     static size_t write_callback(void* contents, size_t size, size_t nmemb, void* userp);
 };

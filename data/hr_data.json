@@ -12,7 +12,7 @@
     "Organization.Code": "O1",
     "Department.Code": "D1",
     "Supervisor": "654321",
-    "Email": "no_mail_01"
+    "Email": "max.mustermann@example.com"
   },
   {
     "EmployeeNumber": "789101",
@@ -27,6 +27,6 @@
     "Organization.Code": "O1",
     "Department.Code": "D1",
     "Supervisor": "654321",
-    "Email": "no_mail_02"
+    "Email": "jane.doe@example.com"
   }
 ]

@@ -6,7 +6,7 @@
 #
 # @file tests/CMakeLists.txt
 # @brief Tests directory build configuration
-# @version 1.0.0
+# @version 1.0.1
 # @date 2025-02-13
 #
 # @author ZHENG Robert (robert@hase-zheng.net)
@@ -14,8 +14,6 @@
 # @license Apache-2.0
 
 find_package(Catch2 3 REQUIRED)
-find_package(nlohmann_json REQUIRED)
-find_package(valijson REQUIRED)
 
 # --- Dummy Plugin ---
 add_library(dummy_plugin MODULE dummy_plugin.cpp)

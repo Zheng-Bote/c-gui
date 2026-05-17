@@ -42,6 +42,21 @@ set(CMAKE_QTV "N/A")
 # --- Options ---
 option(BUILD_TESTING "Build tests" ON)
 
+# --- Output Directories ---
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+
+# --- RPATH Configuration (Linux) ---
+if(UNIX AND NOT APPLE)
+    set(CMAKE_SKIP_RPATH FALSE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+    set(CMAKE_INSTALL_RPATH "$ORIGIN")
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    # Force RPATH instead of RUNPATH so transitive dependencies can be found
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
+endif()
+
 # --- Dependencies via FetchContent ---
 set(FETCHCONTENT_TRY_FIND_PACKAGE_MODE ALWAYS)
 include(FetchContent)

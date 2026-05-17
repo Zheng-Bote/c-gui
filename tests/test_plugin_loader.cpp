@@ -15,32 +15,32 @@
  * @license Apache-2.0
  */
 
-#include <catch2/catch_test_macros.hpp>
 #include "PluginLoader.hpp"
+#include <catch2/catch_test_macros.hpp>
 #include <filesystem>
 
 TEST_CASE("PluginLoader loads and unloads a plugin", "[PluginLoader]") {
-    cgui::PluginLoader loader;
-    std::string plugin_path = DUMMY_PLUGIN_PATH;
+  cgui::PluginLoader loader;
+  std::string plugin_path = DUMMY_PLUGIN_PATH;
 
-    REQUIRE(std::filesystem::exists(plugin_path));
+  REQUIRE(std::filesystem::exists(plugin_path));
 
-    auto res = loader.load(plugin_path);
-    REQUIRE(res.has_value());
-    
-    auto* plugin = loader.get_plugin();
-    REQUIRE(plugin != nullptr);
+  auto res = loader.load(plugin_path);
+  REQUIRE(res.has_value());
 
-    SECTION("Plugin can be initialized") {
-        nlohmann::json config = {{"topic", "test_topic"}};
-        REQUIRE(plugin->initialize(config) == true);
-    }
+  auto *plugin = loader.get_plugin();
+  REQUIRE(plugin != nullptr);
 
-    loader.unload();
+  SECTION("Plugin can be initialized") {
+    nlohmann::json config = {{"topic", "test_topic"}};
+    REQUIRE(plugin->initialize(config) == true);
+  }
+
+  loader.unload();
 }
 
 TEST_CASE("PluginLoader handles non-existent plugin", "[PluginLoader]") {
-    cgui::PluginLoader loader;
-    auto res = loader.load("non_existent_path.so");
-    REQUIRE(!res.has_value());
+  cgui::PluginLoader loader;
+  auto res = loader.load("non_existent_path.so");
+  REQUIRE(!res.has_value());
 }

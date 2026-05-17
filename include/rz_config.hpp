@@ -45,7 +45,7 @@ constexpr std::string_view PROJECT_DOMAIN = "net.hase-zheng";
 
 constexpr std::string_view CMAKE_CXX_STANDARD = "c++23";
 constexpr std::string_view CMAKE_CXX_COMPILER =
-    "MSVC 19.44.35227.0";
+    "GNU 15.2.0";
 constexpr std::string_view QT_VERSION_BUILD = "N/A";
 } // namespace config
 } // namespace rz
