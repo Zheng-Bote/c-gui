@@ -62,6 +62,12 @@ public:
     void configure_ssl(bool verify_ssl, const std::string& ca_path = "");
 
     /**
+     * @brief Set the proxy configuration.
+     * @param proxy_string Proxy string (e.g., "user:pass@proxy:8080").
+     */
+    void set_proxy(const std::string& proxy_string);
+
+    /**
      * @brief Set the upload timeout.
      * @param timeout_seconds Timeout in seconds.
      */
@@ -70,6 +76,7 @@ public:
 private:
     bool m_verify_ssl = true;
     std::string m_ssl_ca_path;
+    std::string m_proxy;
     long m_timeout = 60;
 
     static size_t write_callback(void* contents, size_t size, size_t nmemb, void* userp);

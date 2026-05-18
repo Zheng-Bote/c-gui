@@ -16,9 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `department_db-ora_input`: Oracle DB template for Department topic.
   - `health_db-sqlite_input`: SQLite template for Health topic.
   - `location_mft-s3_input`: Amazon S3 (MFT) template for Location topic.
-- **Configurable Upload Timeouts**:
+- **Configurable Network Settings per Topic**:
   - Every topic can now have a custom `upload_timeout` in the INI file (default: 60s).
-  - Applied to both the core `Uploader` and the `HrUploadPlugin` (including auth flow).
+  - Every topic can now have an optional `proxy` configuration (e.g., `<username>:<password>@<proxy-server>:<port>`).
+  - Both settings are applied to the core `Uploader` and the `HrUploadPlugin` (including the Cority auth flow).
 - **Encrypt Tool Enhancements**:
   - Added support for reading the encryption password from the `cgui_config` environment variable.
   - Improved CLI usage (parameter optional if environment variable is set).

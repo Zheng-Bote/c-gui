@@ -124,6 +124,20 @@ std::expected<void, std::string> AppController::init(const std::filesystem::path
                 meta.schema_path = it.value().at("schema_path").get<std::string>();
                 meta.upload_endpoint = it.value().at("upload_endpoint").get<std::string>();
                 
+                // Proxy (optional)
+                if (it.value().contains("proxy")) {
+                    meta.proxy = it.value().at("proxy").get<std::string>();
+                }
+
+                // Upload Timeout (optional)
+                if (it.value().contains("upload_timeout")) {
+                    try {
+                        meta.upload_timeout = std::stol(it.value().at("upload_timeout").get<std::string>());
+                    } catch (...) {
+                        meta.upload_timeout = 60;
+                    }
+                }
+                
                 // Default upload plugin name based on topic
                 meta.upload_plugin = it.value().contains("upload_plugin") ? it.value().at("upload_plugin").get<std::string>() : meta.topic + "_upload";
                 

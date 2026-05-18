@@ -77,6 +77,36 @@ std::expected<void, std::string> Uploader::upload_sync(const std::string& url, c
     if (!m_ssl_ca_path.empty()) {
         curl_easy_setopt(curl, CURLOPT_CAINFO, m_ssl_ca_path.c_str());
     }
+    
+    if (!m_proxy.empty()) {
+        std::string working_proxy = m_proxy;
+        std::string scheme;
+        auto scheme_pos = working_proxy.find("://");
+        if (scheme_pos != std::string::npos) {
+            scheme = working_proxy.substr(0, scheme_pos + 3);
+            working_proxy = working_proxy.substr(scheme_pos + 3);
+        }
+
+        auto at_pos = working_proxy.find_last_of('@');
+        if (at_pos != std::string::npos) {
+            std::string user_pwd = working_proxy.substr(0, at_pos);
+            std::string host_port = working_proxy.substr(at_pos + 1);
+
+            curl_easy_setopt(curl, CURLOPT_PROXY, (scheme + host_port).c_str());
+
+            auto colon_pos = user_pwd.find(':');
+            if (colon_pos != std::string::npos) {
+                std::string user = user_pwd.substr(0, colon_pos);
+                std::string pass = user_pwd.substr(colon_pos + 1);
+                curl_easy_setopt(curl, CURLOPT_PROXYUSERNAME, user.c_str());
+                curl_easy_setopt(curl, CURLOPT_PROXYPASSWORD, pass.c_str());
+            } else {
+                curl_easy_setopt(curl, CURLOPT_PROXYUSERNAME, user_pwd.c_str());
+            }
+        } else {
+            curl_easy_setopt(curl, CURLOPT_PROXY, m_proxy.c_str());
+        }
+    }
 
     CURLcode res = curl_easy_perform(curl);
     long response_code = 0;
@@ -115,6 +145,10 @@ void Uploader::upload_async(const std::string& url, const nlohmann::json& payloa
 void Uploader::configure_ssl(bool verify_ssl, const std::string& ca_path) {
     m_verify_ssl = verify_ssl;
     m_ssl_ca_path = ca_path;
+}
+
+void Uploader::set_proxy(const std::string& proxy_string) {
+    m_proxy = proxy_string;
 }
 
 void Uploader::set_timeout(long timeout_seconds) {

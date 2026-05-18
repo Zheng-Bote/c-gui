@@ -65,7 +65,7 @@ c-gui is a C++23 desktop application designed for secure data validation and upl
 3. **Build**
 
 ```bash
-   cmake --build --preset conan-release -j
+   cmake --build --preset conan-release -j 2
 ```
 
 ## Usage

@@ -54,6 +54,7 @@ private:
     // SSL Settings
     bool m_verify_ssl = true;
     std::string m_ssl_ca_path;
+    std::string m_proxy;
     long m_upload_timeout = 60;
 
     /**

@@ -74,6 +74,11 @@ bool HrUploadPlugin::initialize(const nlohmann::json& config) {
         m_ssl_ca_path = config["auth"]["ssl_ca_path"].get<std::string>();
     }
 
+    // Proxy Settings
+    if (config.contains("proxy") && !config["proxy"].is_null()) {
+        m_proxy = config["proxy"].get<std::string>();
+    }
+
     // Upload Timeout
     if (config.contains("upload_timeout")) {
         try {
@@ -96,6 +101,36 @@ void HrUploadPlugin::setup_curl_common(void* curl_handle) {
     }
     if (!m_ssl_ca_path.empty()) {
         curl_easy_setopt(curl, CURLOPT_CAINFO, m_ssl_ca_path.c_str());
+    }
+    
+    if (!m_proxy.empty()) {
+        std::string working_proxy = m_proxy;
+        std::string scheme;
+        auto scheme_pos = working_proxy.find("://");
+        if (scheme_pos != std::string::npos) {
+            scheme = working_proxy.substr(0, scheme_pos + 3);
+            working_proxy = working_proxy.substr(scheme_pos + 3);
+        }
+
+        auto at_pos = working_proxy.find_last_of('@');
+        if (at_pos != std::string::npos) {
+            std::string user_pwd = working_proxy.substr(0, at_pos);
+            std::string host_port = working_proxy.substr(at_pos + 1);
+
+            curl_easy_setopt(curl, CURLOPT_PROXY, (scheme + host_port).c_str());
+
+            auto colon_pos = user_pwd.find(':');
+            if (colon_pos != std::string::npos) {
+                std::string user = user_pwd.substr(0, colon_pos);
+                std::string pass = user_pwd.substr(colon_pos + 1);
+                curl_easy_setopt(curl, CURLOPT_PROXYUSERNAME, user.c_str());
+                curl_easy_setopt(curl, CURLOPT_PROXYPASSWORD, pass.c_str());
+            } else {
+                curl_easy_setopt(curl, CURLOPT_PROXYUSERNAME, user_pwd.c_str());
+            }
+        } else {
+            curl_easy_setopt(curl, CURLOPT_PROXY, m_proxy.c_str());
+        }
     }
 }
 

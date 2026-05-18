@@ -31,6 +31,8 @@ struct TopicMeta {
     std::filesystem::path schema_path;
     std::string upload_endpoint;
     std::string upload_plugin;  ///< Name of the upload plugin (e.g., "hr_upload")
+    std::string proxy;          ///< Proxy configuration (e.g., "user:pass@proxy:8080")
+    long upload_timeout = 60;   ///< Upload timeout in seconds
 };
 
 /**
