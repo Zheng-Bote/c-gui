@@ -61,9 +61,16 @@ public:
      */
     void configure_ssl(bool verify_ssl, const std::string& ca_path = "");
 
+    /**
+     * @brief Set the upload timeout.
+     * @param timeout_seconds Timeout in seconds.
+     */
+    void set_timeout(long timeout_seconds);
+
 private:
     bool m_verify_ssl = true;
     std::string m_ssl_ca_path;
+    long m_timeout = 60;
 
     static size_t write_callback(void* contents, size_t size, size_t nmemb, void* userp);
 };

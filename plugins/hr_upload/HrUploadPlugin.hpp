@@ -7,7 +7,7 @@
  *
  * @file HrUploadPlugin.hpp
  * @brief Implementation of HR-specific upload plugin with Cority Auth flow.
- * @version 1.2.0
+ * @version 1.3.0
  * @date 2026-05-17
  *
  * @author ZHENG Robert (robert@hase-zheng.net)
@@ -36,7 +36,7 @@ public:
 
     bool initialize(const nlohmann::json& config) override;
     [[nodiscard]] std::string get_topic() const override { return "HR"; }
-    [[nodiscard]] std::string get_version() const override { return "1.2.0"; }
+    [[nodiscard]] std::string get_version() const override { return "1.3.0"; }
     std::expected<void, std::string> upload(const nlohmann::json& data) override;
     void shutdown() override;
 
@@ -54,6 +54,7 @@ private:
     // SSL Settings
     bool m_verify_ssl = true;
     std::string m_ssl_ca_path;
+    long m_upload_timeout = 60;
 
     /**
      * @brief Sets common CURL options including SSL settings.

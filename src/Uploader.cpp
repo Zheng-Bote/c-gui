@@ -68,6 +68,7 @@ std::expected<void, std::string> Uploader::upload_sync(const std::string& url, c
     curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, m_timeout);
 
     if (!m_verify_ssl) {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
@@ -114,6 +115,10 @@ void Uploader::upload_async(const std::string& url, const nlohmann::json& payloa
 void Uploader::configure_ssl(bool verify_ssl, const std::string& ca_path) {
     m_verify_ssl = verify_ssl;
     m_ssl_ca_path = ca_path;
+}
+
+void Uploader::set_timeout(long timeout_seconds) {
+    m_timeout = timeout_seconds;
 }
 
 } // namespace cgui

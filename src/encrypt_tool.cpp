@@ -7,19 +7,21 @@
  *
  * @file encrypt_tool.cpp
  * @brief CLI tool to encrypt INI configuration files.
- * @version 1.0.0
- * @date 2025-02-13
+ * @version 1.0.1
+ * @date 2026-05-18
  *
  * @author ZHENG Robert (robert@hase-zheng.net)
  * @copyright Copyright (c) 2025 ZHENG Robert
  * @license Apache-2.0
  */
 
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <sodium.h>
 #include <string>
+#include <cstdlib>
 
 /**
  * @brief Securely clear sensitive data.
@@ -30,19 +32,30 @@ void secure_clear(std::vector<unsigned char>& data) {
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 4) {
-        std::cerr << "Usage: " << argv[0] << " <input_ini> <output_enc> <password>" << std::endl;
+    std::string password;
+    char* env_pwd = std::getenv("cgui_config");
+    if (env_pwd != nullptr) {
+        password = env_pwd;
+    }
+
+    if (argc < 3 || (password.empty() && argc < 4)) {
+        std::cerr << "Usage: " << argv[0] << " <input_ini> <output_enc> [<password>]" << std::endl;
+        std::cerr << "Note: Password can also be set via the environment variable 'cgui_config'." << std::endl;
         return 1;
+    }
+
+    std::string input_path = argv[1];
+    std::string output_path = argv[2];
+    
+    // Command line argument takes precedence over environment variable
+    if (argc >= 4) {
+        password = argv[3];
     }
 
     if (sodium_init() < 0) {
         std::cerr << "Libsodium initialization failed" << std::endl;
         return 1;
     }
-
-    std::string input_path = argv[1];
-    std::string output_path = argv[2];
-    std::string password = argv[3];
 
     std::ifstream input_file(input_path, std::ios::binary | std::ios::ate);
     if (!input_file.is_open()) {

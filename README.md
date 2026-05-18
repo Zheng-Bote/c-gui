@@ -19,9 +19,9 @@ c-gui is a C++23 desktop application designed for secure data validation and upl
 ## Features
 
 - **Dual-Plugin Architecture**: Every data topic is handled by specialized Ingest (Input) and Upload (Output) plugins.
-- **Dynamic Interface Discovery**: Automatically detects available data interfaces (CSV, JSON, PostgreSQL, Oracle, Kafka) based on installed plugins.
+- **Dynamic Interface Discovery**: Automatically detects available data interfaces (CSV, JSON, XLSX, SQLite, Oracle, PostgreSQL, Kafka, S3-MFT) based on installed plugins.
 - **Topic-Aware UI**: GUI dynamically adapts its data loading options and date format settings based on the selected topic and available plugins.
-- **File Dialog Support**: Seamlessly browse for CSV and JSON input files with pre-configured default path suggestions.
+- **File Dialog Support**: Seamlessly browse for CSV, JSON, XLSX, and SQLite input files with pre-configured default path suggestions.
 - **Configurable Upload Payloads**: Override plugin-specific upload options per topic via INI configuration.
 - **Flexible Date Formatting**: Customize date component order and delimiters directly in the GUI.
 - **Plugin Management**: Built-in dialog to inspect discovered plugins, their versions, and capabilities.
@@ -48,11 +48,25 @@ c-gui is a C++23 desktop application designed for secure data validation and upl
    conan install . --output-folder=build --build=missing
    ```
 
-2. **Configure and Build**:
+2. **Configure**:
+
+2a. **Linux**
+
    ```bash
    cmake --preset conan-release
-   cmake --build --preset conan-release -j"$(nproc)"
    ```
+
+2b. **Windows**
+
+```bash
+   cmake --preset conan-default
+```
+
+3. **Build**
+
+```bash
+   cmake --build --preset conan-release -j
+```
 
 ## Usage
 

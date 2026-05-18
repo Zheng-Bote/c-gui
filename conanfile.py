@@ -20,7 +20,7 @@ import os
 
 class CGuiRecipe(ConanFile):
     name = "c-gui"
-    version = "0.3.0"
+    version = "0.4.0"
     package_type = "application"
 
     # Binary configuration
@@ -40,6 +40,7 @@ class CGuiRecipe(ConanFile):
         self.requires("spdlog/[>=1.15 <2]")
         self.requires("catch2/[>=3.14 <4]")
         self.requires("cpp-httplib/[>=0.44 <1]")
+        self.requires("openxlsx/[>=0.4 <1]")
 
     def configure(self):
         self.options["cpp-httplib"].with_openssl = True

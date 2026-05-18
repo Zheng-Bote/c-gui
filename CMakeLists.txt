@@ -6,7 +6,7 @@
 #
 # @file CMakeLists.txt
 # @brief Main build configuration
-# @version 0.3.0
+# @version 0.4.0
 # @date 2025-02-13
 #
 # @author ZHENG Robert (robert@hase-zheng.net)
@@ -16,7 +16,7 @@
 cmake_minimum_required(VERSION 3.28)
 
 project(c-gui
-    VERSION 0.3.0
+    VERSION 0.4.0
     DESCRIPTION "C++23 desktop application for data validation and upload"
     HOMEPAGE_URL "https://github.com/Zheng-Bote/c-gui"
     LANGUAGES CXX
@@ -83,6 +83,16 @@ else()
 endif()
 
 
+
+# --- Dependencies ---
+find_package(wxWidgets REQUIRED COMPONENTS core base net xml)
+find_package(nlohmann_json REQUIRED)
+find_package(CURL REQUIRED)
+find_package(libsodium REQUIRED)
+find_package(valijson REQUIRED)
+find_package(inih REQUIRED)
+find_package(spdlog REQUIRED)
+find_package(OpenXLSX REQUIRED)
 
 # --- Subdirectories ---
 add_subdirectory(configure)

@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-18
+
+### Added
+- **Excel (XLSX) Input Support**:
+  - New input plugin for the HR topic based on `OpenXLSX/0.4.1`.
+  - Automatic type detection (String, Integer, Float, Boolean) and null handling.
+  - Header detection from the first row of the first worksheet.
+- **New Example Input Plugins**:
+  - `department_db-ora_input`: Oracle DB template for Department topic.
+  - `health_db-sqlite_input`: SQLite template for Health topic.
+  - `location_mft-s3_input`: Amazon S3 (MFT) template for Location topic.
+- **Configurable Upload Timeouts**:
+  - Every topic can now have a custom `upload_timeout` in the INI file (default: 60s).
+  - Applied to both the core `Uploader` and the `HrUploadPlugin` (including auth flow).
+- **Encrypt Tool Enhancements**:
+  - Added support for reading the encryption password from the `cgui_config` environment variable.
+  - Improved CLI usage (parameter optional if environment variable is set).
+- **Documentation**:
+  - Detailed English `README.md` files for HR CSV, JSON, and XLSX input plugins.
+  - New dedicated `encrypt_tool_readme.md` in the `docs/` folder.
+  - Updated `sample.ini` with XLSX and timeout configuration examples.
+  - Updated `NOTICE` file with `OpenXLSX` license information.
+
+### Changed
+- **Build System**: 
+  - Added `OpenXLSX` as a core dependency in `conanfile.py`.
+  - Globalized `find_package` calls in root `CMakeLists.txt` for better plugin and tool integration.
+
 ## [0.3.0] - 2026-05-16
 
 ### Added

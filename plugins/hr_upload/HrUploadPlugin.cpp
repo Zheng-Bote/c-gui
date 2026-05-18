@@ -7,7 +7,7 @@
  *
  * @file HrUploadPlugin.cpp
  * @brief Implementation of HR-specific upload plugin with Cority Auth flow.
- * @version 1.2.0
+ * @version 1.3.0
  * @date 2026-05-17
  *
  * @author ZHENG Robert (robert@hase-zheng.net)
@@ -74,11 +74,22 @@ bool HrUploadPlugin::initialize(const nlohmann::json& config) {
         m_ssl_ca_path = config["auth"]["ssl_ca_path"].get<std::string>();
     }
 
+    // Upload Timeout
+    if (config.contains("upload_timeout")) {
+        try {
+            std::string val = config["upload_timeout"].get<std::string>();
+            m_upload_timeout = std::stol(val);
+        } catch (...) {
+            m_upload_timeout = 60;
+        }
+    }
+
     return true;
 }
 
 void HrUploadPlugin::setup_curl_common(void* curl_handle) {
     CURL* curl = static_cast<CURL*>(curl_handle);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, m_upload_timeout);
     if (!m_verify_ssl) {
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
         curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);

@@ -13,16 +13,6 @@
 # @copyright Copyright (c) 2025 ZHENG Robert
 # @license Apache-2.0
 
-# --- Find Dependencies ---
-find_package(wxWidgets REQUIRED COMPONENTS core base net xml)
-
-find_package(nlohmann_json REQUIRED)
-find_package(CURL REQUIRED)
-find_package(libsodium REQUIRED)
-find_package(valijson REQUIRED)
-find_package(inih REQUIRED)
-find_package(spdlog REQUIRED)
-
 # --- Core Library ---
 set(CORE_SOURCES
     AppController.cpp

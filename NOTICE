@@ -37,7 +37,7 @@ This product includes software developed by third parties. The following compone
 
 - argparse (>=3.1)
   License: MIT
-  Attribution: Copyright (c) 2020 Prashanth Ganapathy.
+  Attribution: Copyright (c) 2020 Prashanth Ganapathy (https://github.com/p-ranav/argparse).
 
 - cpp-httplib (>=0.44.0)
   License: MIT
@@ -46,3 +46,7 @@ This product includes software developed by third parties. The following compone
 - gh-update-checker (>=1.1.1)
   License: LGPL-3.0
   Attribution: Copyright (c) 2026 ZHENG Robert (https://github.com/Zheng-Bote/gh-update-checker).
+
+- OpenXLSX (>=0.4.1)
+  License: BSD 3-Clause License
+  Attribution: Copyright (c) 2024 Troels K. Dalgaard (https://github.com/troldal/OpenXLSX).

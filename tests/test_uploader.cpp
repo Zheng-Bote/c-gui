@@ -55,3 +55,13 @@ TEST_CASE("Uploader handles invalid URL", "[Uploader]") {
         REQUIRE(!error_received.empty());
     }
 }
+
+TEST_CASE("Uploader timeout configuration", "[Uploader]") {
+    Uploader uploader;
+    
+    SECTION("Timeout can be set") {
+        // Since m_timeout is private, we can't check it directly without making it public or adding a getter.
+        // But we can verify that the code compiles and runs.
+        uploader.set_timeout(30);
+    }
+}
