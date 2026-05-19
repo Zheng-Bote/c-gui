@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-05-19
+
+### Added
+- **Audit Log Signing**:
+  - Implemented cryptographic signing for critical audit logs using `libsodium` (Ed25519).
+  - New `AuditLogSink` in `LogManager` appends detached signatures to every log line for non-repudiation.
+  - Configuration of the signing key via the `[security]` section in the INI file.
+- **Enhanced Traceability**:
+  - Computer name (Hostname) is now logged alongside the OS user during application startup.
+  - Every upload operation now includes both the initiating OS user and the computer name in both the topic log and the signed audit log.
+- **Global Networking Support**:
+  - Added support for a global proxy configuration in the `[networking]` section.
+  - The global proxy is automatically used as a fallback for all upload plugins and the GitHub update checker.
+
+### Fixed
+- **Update Checker**:
+  - Corrected return type handling for `ghupdate::check_github_update_async` (using `ghupdate::UpdateInfo`).
+  - Fixed proxy integration to only activate when a proxy is explicitly configured (avoiding empty string issues).
+- **Stability**: Fixed a typo in `LogManager` (`flush_` override) that caused compilation errors on some platforms.
+
 ## [0.4.0] - 2026-05-18
 
 ### Added

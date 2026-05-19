@@ -231,10 +231,18 @@ void MainWindow::on_about(wxCommandEvent &WXUNUSED(event)) {
 
   std::string local_version(rz::config::VERSION);
 
+  std::string proxy;
+  const auto &config = m_controller->get_config();
+  if (config.contains("networking") && config["networking"].contains("proxy")) {
+    proxy = config["networking"]["proxy"].get<std::string>();
+  }
+
   // We run this in a separate thread to keep the UI responsive
-  std::thread([this, about_msg, repo_url, local_version]() {
+  std::thread([this, about_msg, repo_url, local_version, proxy]() {
     try {
-      auto future = ghupdate::check_github_update_async(repo_url, local_version);
+      auto future = proxy.empty() ? 
+                    ghupdate::check_github_update_async(repo_url, local_version) : 
+                    ghupdate::check_github_update_async(repo_url, local_version, proxy);
       auto result = future.get();
 
       this->CallAfter([this, about_msg, result]() {

@@ -6,11 +6,11 @@
 #
 # @file conanfile.py
 # @brief Dependency management for c-gui
-# @version 0.2.0
-# @date 2025-02-13
+# @version 0.5.0
+# @date 2026-05-19
 #
 # @author ZHENG Robert (robert@hase-zheng.net)
-# @copyright Copyright (c) 2025 ZHENG Robert
+# @copyright Copyright (c) 2026 ZHENG Robert
 # @license Apache-2.0
 
 from conan import ConanFile
@@ -20,7 +20,7 @@ import os
 
 class CGuiRecipe(ConanFile):
     name = "c-gui"
-    version = "0.4.0"
+    version = "0.5.0"
     package_type = "application"
 
     # Binary configuration

@@ -54,6 +54,23 @@ std::string get_os_user() {
 #endif
     return "unknown_user";
 }
+
+std::string get_computer_name() {
+#ifdef _WIN32
+    TCHAR name[MAX_COMPUTERNAME_LENGTH + 1];
+    DWORD size = MAX_COMPUTERNAME_LENGTH + 1;
+    if (GetComputerName(name, &size)) {
+        std::wstring wname(name);
+        return std::string(wname.begin(), wname.end());
+    }
+#else
+    char name[256];
+    if (gethostname(name, sizeof(name)) == 0) {
+        return std::string(name);
+    }
+#endif
+    return "unknown_host";
+}
 } // namespace
 
 #ifdef _WIN32
@@ -102,7 +119,18 @@ std::expected<void, std::string> AppController::init(const std::filesystem::path
         auto logger = LogManager::get_instance().get_core_logger();
         logger->info("Application session started. Version: {}", rz::config::VERSION);
         logger->info("OS User: {}", get_os_user());
+        logger->info("Computer Name: {}", get_computer_name());
         logger->info("Config loaded from {}", ini_path.string());
+
+        // Audit Log Signing
+        if (config.contains("security") && config["security"].contains("log_signing_key")) {
+            LogManager::get_instance().set_signing_key(config["security"]["log_signing_key"].get<std::string>());
+        }
+
+        // Global Networking Proxy
+        if (config.contains("networking") && config["networking"].contains("proxy")) {
+            logger->info("Global proxy configured: {}", config["networking"]["proxy"].get<std::string>());
+        }
 
         // Load Plugin Paths
         m_data_plugins_dir = "./plugins/data";
@@ -450,7 +478,7 @@ void AppController::start_upload() {
 
     update_log("Starting upload process...");
     logger->info("Starting upload process for topic {} ({} records)", m_current_topic, m_current_data.size());
-    logger->info("Initiated by OS User: {}", get_os_user());
+    logger->info("Initiated by OS User: {} | Computer: {}", get_os_user(), get_computer_name());
     update_progress(0);
 
     const auto& config = m_config_manager->get_config();
@@ -482,6 +510,12 @@ void AppController::start_upload() {
 
         nlohmann::json plugin_config = config; // Give it full config
         plugin_config["topic"] = m_current_topic;
+
+        // Global proxy fallback
+        if (config.contains("networking") && config["networking"].contains("proxy")) {
+            plugin_config["proxy"] = config["networking"]["proxy"].get<std::string>();
+        }
+
         plugin_config["upload_endpoint"] = meta->upload_endpoint;
         plugin_config["options"] = nlohmann::json::object();
         plugin_config["options"]["dateFormat"] = m_date_format;
@@ -558,12 +592,16 @@ void AppController::on_validation_complete(bool success, const std::vector<Valid
 
 void AppController::on_upload_complete(std::expected<void, std::string> result) {
     auto logger = LogManager::get_instance().get_logger(m_current_topic);
+    auto audit_logger = LogManager::get_instance().get_audit_logger(m_current_topic);
+
     if (result) {
         update_log("Upload successful!");
         logger->info("Upload completed successfully");
+        audit_logger->info("SUCCESS: Upload of topic {} completed. OS User: {} | Computer: {}", m_current_topic, get_os_user(), get_computer_name());
     } else {
         update_log(std::format("Upload failed: {}", result.error()));
         logger->error("Upload failed: {}", result.error());
+        audit_logger->error("FAILURE: Upload of topic {} failed: {}. OS User: {} | Computer: {}", m_current_topic, result.error(), get_os_user(), get_computer_name());
     }
     update_progress(100);
 }

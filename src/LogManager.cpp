@@ -23,7 +23,9 @@
 #include <spdlog/sinks/rotating_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/callback_sink.h>
+#include <spdlog/sinks/base_sink.h>
 #include <spdlog/pattern_formatter.h>
+#include <sodium.h>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
@@ -33,6 +35,59 @@ namespace cgui {
 
 namespace {
     LogManager::LogCallback g_callback = nullptr;
+
+    /**
+     * @brief Custom sink that signs log entries using Ed25519.
+     */
+    template<typename Mutex>
+    class audit_signing_sink : public spdlog::sinks::base_sink<Mutex> {
+    public:
+        audit_signing_sink(std::shared_ptr<spdlog::sinks::sink> target_sink, const std::vector<unsigned char>& private_key)
+            : m_target_sink(std::move(target_sink)), m_private_key(private_key) {}
+
+    protected:
+        void sink_it_(const spdlog::details::log_msg& msg) override {
+            if (m_private_key.empty()) {
+                m_target_sink->log(msg);
+                return;
+            }
+
+            // 1. Format the message
+            spdlog::memory_buf_t formatted;
+            this->formatter_->format(msg, formatted);
+            std::string text = fmt::to_string(formatted);
+
+            // Strip trailing newline if present for signing consistency
+            if (!text.empty() && text.back() == '\n') text.pop_back();
+            if (!text.empty() && text.back() == '\r') text.pop_back();
+
+            // 2. Sign
+            unsigned char sig[crypto_sign_BYTES];
+            crypto_sign_detached(sig, nullptr, 
+                                 reinterpret_cast<const unsigned char*>(text.c_str()), text.length(), 
+                                 m_private_key.data());
+
+            // 3. Convert signature to hex
+            char sig_hex[crypto_sign_BYTES * 2 + 1];
+            sodium_bin2hex(sig_hex, sizeof(sig_hex), sig, sizeof(sig));
+
+            // 4. Create new message with signature appended
+            std::string signed_text = text + " | sig: " + std::string(sig_hex) + "\n";
+            
+            spdlog::details::log_msg signed_msg(msg.time, msg.source, msg.logger_name, msg.level, signed_text);
+            m_target_sink->log(signed_msg);
+        }
+
+        void flush_() override {
+            m_target_sink->flush();
+        }
+
+    private:
+        std::shared_ptr<spdlog::sinks::sink> m_target_sink;
+        std::vector<unsigned char> m_private_key;
+    };
+
+    using audit_signing_sink_mt = audit_signing_sink<std::mutex>;
 }
 
 LogManager& LogManager::get_instance() {
@@ -103,6 +158,69 @@ std::shared_ptr<spdlog::logger> LogManager::get_logger(const std::string& topic)
 
 std::shared_ptr<spdlog::logger> LogManager::get_core_logger() {
     return get_logger("Core");
+}
+
+std::shared_ptr<spdlog::logger> LogManager::get_audit_logger(const std::string& topic) {
+    std::string date_str = get_current_date_str();
+    std::string logger_name = date_str + "_" + topic + "_audit";
+
+    auto it = m_audit_loggers.find(logger_name);
+    if (it != m_audit_loggers.end()) {
+        return it->second;
+    }
+
+    // Audit logs go to a separate file
+    std::string filename = (std::filesystem::path(m_log_path) / (logger_name + ".log")).string();
+    
+    // File sink for the actual storage
+    auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(filename, 1024 * 1024 * 10, 5);
+    
+    // Wrap it in our signing sink
+    auto signing_sink = std::make_shared<audit_signing_sink_mt>(file_sink, m_signing_key);
+    
+    // We also want audit logs in the console and GUI (without the signature there to keep it clean)
+    auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    
+    std::vector<spdlog::sink_ptr> sinks {signing_sink, console_sink};
+
+    if (g_callback) {
+        auto gui_sink = std::make_shared<spdlog::sinks::callback_sink_mt>([](const spdlog::details::log_msg& msg) {
+            if (!g_callback) return;
+            spdlog::memory_buf_t formatted;
+            spdlog::pattern_formatter formatter("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
+            formatter.format(msg, formatted);
+            g_callback(fmt::to_string(formatted));
+        });
+        sinks.push_back(gui_sink);
+    }
+
+    auto logger = std::make_shared<spdlog::logger>(logger_name, sinks.begin(), sinks.end());
+    logger->set_level(m_level);
+    logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
+    logger->flush_on(spdlog::level::trace);
+
+    m_audit_loggers[logger_name] = logger;
+    return logger;
+}
+
+void LogManager::set_signing_key(const std::string& hex_key) {
+    if (hex_key.length() != crypto_sign_SECRETKEYBYTES * 2) {
+        get_core_logger()->error("Invalid Ed25519 secret key length. Expected {} hex characters.", crypto_sign_SECRETKEYBYTES * 2);
+        return;
+    }
+
+    m_signing_key_hex = hex_key;
+    m_signing_key.resize(crypto_sign_SECRETKEYBYTES);
+    
+    if (sodium_hex2bin(m_signing_key.data(), m_signing_key.size(), 
+                       hex_key.c_str(), hex_key.length(), 
+                       nullptr, nullptr, nullptr) != 0) {
+        get_core_logger()->error("Failed to parse Ed25519 secret key from hex.");
+        m_signing_key.clear();
+        return;
+    }
+
+    get_core_logger()->info("Audit log signing key configured successfully.");
 }
 
 spdlog::level::level_enum LogManager::parse_level(const std::string& level_str) {

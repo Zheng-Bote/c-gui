@@ -27,8 +27,10 @@ c-gui is a C++23 desktop application designed for secure data validation and upl
 - **Plugin Management**: Built-in dialog to inspect discovered plugins, their versions, and capabilities.
 - **JSON Schema Validation**: Rigorous validation of incoming data against predefined schemas.
 - **Secure Configuration**: INI files are encrypted on disk using XChaCha20-Poly1305 and Argon2id for password hashing.
+- **Audit Log Signing**: Cryptographically sign critical audit logs using Ed25519 to ensure non-repudiation.
+- **Global Proxy Support**: Centralized networking configuration with fallback support for all plugins and update checks.
 - **Update Notifications**: Non-blocking check for new versions via asynchronous GitHub integration (v1.1.0).
-- **Advanced Logging**: Real-time GUI status updates combined with persistent `spdlog` file rotation and OS user audit trails.
+- **Advanced Logging**: Real-time GUI status updates combined with persistent `spdlog` file rotation, OS user identification, and computer name audit trails.
 - **Async Processing**: Background worker threads for validation and upload tasks to ensure a smooth UI experience.
 - **Cross-platform**: Native support for Windows 11 and Linux.
 

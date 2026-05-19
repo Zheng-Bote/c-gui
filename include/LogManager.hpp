@@ -58,9 +58,21 @@ public:
     std::shared_ptr<spdlog::logger> get_logger(const std::string& topic);
 
     /**
+     * @brief Get or create a signed audit logger for a specific topic.
+     * @param topic The topic name.
+     */
+    std::shared_ptr<spdlog::logger> get_audit_logger(const std::string& topic);
+
+    /**
      * @brief Get the system-wide core logger.
      */
     std::shared_ptr<spdlog::logger> get_core_logger();
+
+    /**
+     * @brief Set the Ed25519 private key for log signing.
+     * @param hex_key Private key as hex string.
+     */
+    void set_signing_key(const std::string& hex_key);
 
 private:
     LogManager() = default;
@@ -68,7 +80,11 @@ private:
 
     std::string m_log_path = "./logs";
     spdlog::level::level_enum m_level = spdlog::level::info;
+    std::string m_signing_key_hex;
+    std::vector<unsigned char> m_signing_key;
+    
     std::map<std::string, std::shared_ptr<spdlog::logger>> m_loggers;
+    std::map<std::string, std::shared_ptr<spdlog::logger>> m_audit_loggers;
 
     spdlog::level::level_enum parse_level(const std::string& level_str);
     std::string get_current_date_str();
