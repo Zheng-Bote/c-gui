@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-05-22
+
+### Added
+- **Dynamic Configuration Management**:
+  - New "Config" menu in the GUI allowing users to update security and network settings on-the-fly.
+  - **Log Signing Key**: Generate (Ed25519) and save 64-byte hex signing keys directly from the UI.
+  - **Proxy Configuration**: Dedicated dialog to set or clear network proxies with automatic INI-style persistence.
+  - **Password Verification**: Every configuration change now requires and verifies the configuration password before saving to prevent accidental file corruption.
+- **Enhanced Kafka Integration**:
+  - Ported Kafka ingestion logic from Python to a high-performance C++ plugin using `librdkafka`.
+  - Dynamic connection parameters via the `[topics.HR] data_kafka` INI entry.
+  - **Personalized Consumer Groups**: Automatically appends the current OS username to the Kafka `group.id` for unique offset tracking per user.
+- **Oracle Plugin Modernization**:
+  - Migrated the Oracle input plugin from `ocilib` to **SOCI** for improved stability and native support on Windows 11 with Oracle Client v19.
+  - Improved data type mapping (Dates, Integers, Strings) and error diagnostics.
+- **Security & Privacy**:
+  - **Credential Masking**: Automatically redacts sensitive information (passwords, API keys, secrets) from all GUI status updates and persistent log files.
+  - **Robust INI Parsing**: Replaced the standard `inih` library with a custom, unlimited-length parser to support complex Kafka and Proxy connection strings.
+- **Documentation**:
+  - Added "Config Help" in the GUI (Help menu) with concise English instructions for security and networking features.
+  - Detailed README for the Oracle plugin including environment setup requirements.
+
+### Fixed
+- **Stability**: Resolved "failed to parse" errors for long configuration lines by implementing a custom INI parser.
+- **Integrity**: Fixed a potential configuration corruption bug by ensuring UTF-8 password handling in the GUI.
+- **UX**: Improved Audit Log formatting by removing redundant timestamps and adopting a structured key-value format.
+- **Linking**: Fixed plugin linker errors on Windows by decoupling C++ ABI dependencies between the core application and shared modules.
+
 ## [0.5.0] - 2026-05-19
 
 ### Added

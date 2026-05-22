@@ -174,6 +174,7 @@ std::shared_ptr<spdlog::logger> LogManager::get_audit_logger(const std::string& 
     
     // File sink for the actual storage
     auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(filename, 1024 * 1024 * 10, 5);
+    file_sink->set_pattern("%v"); // Underlying sink should only write the formatted and signed payload
     
     // Wrap it in our signing sink
     auto signing_sink = std::make_shared<audit_signing_sink_mt>(file_sink, m_signing_key);

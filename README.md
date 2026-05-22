@@ -22,17 +22,20 @@ c-gui is a C++23 desktop application designed for secure data validation and upl
 - **Dynamic Interface Discovery**: Automatically detects available data interfaces (CSV, JSON, XLSX, SQLite, Oracle, PostgreSQL, Kafka, S3-MFT) based on installed plugins.
 - **Topic-Aware UI**: GUI dynamically adapts its data loading options and date format settings based on the selected topic and available plugins.
 - **File Dialog Support**: Seamlessly browse for CSV, JSON, XLSX, and SQLite input files with pre-configured default path suggestions.
+- **Dynamic Configuration**: Built-in "Config" menu to update Log Signing Keys and Network Proxy settings directly from the GUI with automatic encrypted persistence.
+- **Secure Persistence**: Password-verified configuration saving prevents accidental file corruption.
 - **Configurable Upload Payloads**: Override plugin-specific upload options per topic via INI configuration.
 - **Flexible Date Formatting**: Customize date component order and delimiters directly in the GUI.
 - **Plugin Management**: Built-in dialog to inspect discovered plugins, their versions, and capabilities.
 - **JSON Schema Validation**: Rigorous validation of incoming data against predefined schemas.
 - **Secure Configuration**: INI files are encrypted on disk using XChaCha20-Poly1305 and Argon2id for password hashing.
 - **Audit Log Signing**: Cryptographically sign critical audit logs using Ed25519 to ensure non-repudiation.
+- **Credential Masking**: Automatically redacts sensitive data (passwords, API keys) from logs and GUI status updates.
 - **Global Proxy Support**: Centralized networking configuration with fallback support for all plugins and update checks.
 - **Update Notifications**: Non-blocking check for new versions via asynchronous GitHub integration (v1.1.0).
 - **Advanced Logging**: Real-time GUI status updates combined with persistent `spdlog` file rotation, OS user identification, and computer name audit trails.
 - **Async Processing**: Background worker threads for validation and upload tasks to ensure a smooth UI experience.
-- **Cross-platform**: Native support for Windows 11 and Linux.
+- **Cross-platform**: Native support for Windows 11 (with Oracle Client v19 support via SOCI) and Linux.
 
 ## Prerequisites
 
@@ -41,6 +44,8 @@ c-gui is a C++23 desktop application designed for secure data validation and upl
 - **Conan**: v2.x.
 - **wxWidgets**: 3.2+ (installed via Conan).
 - **libsodium**: 1.0.18+ (installed via Conan).
+- **librdkafka**: (for Kafka support).
+- **Oracle Instant Client**: (for Oracle support).
 
 ## Build Instructions
 

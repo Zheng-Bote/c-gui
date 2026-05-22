@@ -7,8 +7,8 @@
  *
  * @file AppController.cpp
  * @brief Implementation of application orchestration logic.
- * @version 1.1.0
- * @date 2026-05-15
+ * @version 1.2.1
+ * @date 2026-05-22
  *
  * @author ZHENG Robert (robert@hase-zheng.net)
  * @copyright Copyright (c) 2026 ZHENG Robert
@@ -20,6 +20,7 @@
 #include "LogManager.hpp"
 #include "AuthManager.hpp"
 #include "rz_config.hpp"
+#include <sodium.h>
 #include <wx/wx.h>
 #include <wx/app.h>
 #include <thread>
@@ -33,10 +34,22 @@
 #include <unistd.h>
 #include <pwd.h>
 #endif
+#include <regex>
 
 namespace cgui {
 
 namespace {
+std::string sanitize_string(const std::string& input) {
+    std::string sanitized = input;
+    // Mask password:..., api_secret:..., api_key:...
+    std::vector<std::string> keys = {"password", "api_secret", "api_key", "secret"};
+    for (const auto& key : keys) {
+        std::regex re(key + "\\s*:\\s*[^,\\s\"]+", std::regex_constants::icase);
+        sanitized = std::regex_replace(sanitized, re, key + ":*******");
+    }
+    return sanitized;
+}
+
 std::string get_os_user() {
 #ifdef _WIN32
     TCHAR name[UNLEN + 1];
@@ -96,6 +109,7 @@ AppController::~AppController() {
 
 std::expected<void, std::string> AppController::init(const std::filesystem::path& ini_path, const std::string& password) {
     try {
+        m_config_path = ini_path;
         auto result = m_config_manager->load_encrypted_ini(ini_path, password);
         if (!result) {
             return result;
@@ -129,7 +143,7 @@ std::expected<void, std::string> AppController::init(const std::filesystem::path
 
         // Global Networking Proxy
         if (config.contains("networking") && config["networking"].contains("proxy")) {
-            logger->info("Global proxy configured: {}", config["networking"]["proxy"].get<std::string>());
+            logger->info("Global proxy configured");
         }
 
         // Load Plugin Paths
@@ -317,7 +331,7 @@ std::expected<void, std::string> AppController::load_data(const std::string& int
     }
 
     auto logger = LogManager::get_instance().get_logger(m_current_topic);
-    logger->info("Loading data for topic {} using interface {} from: {}", m_current_topic, interface_name, path_or_conn);
+    logger->info("Loading data for topic {} using interface {} from: {}", m_current_topic, interface_name, sanitize_string(path_or_conn));
 
     auto meta = m_topic_registry->get_topic_meta(m_current_topic);
     if (!meta) {
@@ -353,10 +367,17 @@ std::expected<void, std::string> AppController::load_data(const std::string& int
     plugin_config["file_path"] = path_or_conn;
     plugin_config["connection_string"] = path_or_conn; // Support both naming styles
     plugin_config["topic"] = m_current_topic;
+    plugin_config["os_user"] = get_os_user();
 
     if (!data_plugin->initialize(plugin_config)) {
-        logger->error("Failed to initialize data plugin {} with source: {}", plugin_name, path_or_conn);
-        return std::unexpected("Failed to initialize data plugin");
+        logger->error("Failed to initialize data plugin {}. Check console/stderr for details.", plugin_name);
+        std::string detail_msg = std::format("Failed to initialize data plugin {}.", plugin_name);
+        if (plugin_name.find("ora") != std::string::npos) {
+            detail_msg += " Ensure Oracle Client and SOCI backend are in PATH.";
+        } else if (plugin_name.find("kafka") != std::string::npos) {
+            detail_msg += " Ensure librdkafka DLLs are in PATH and credentials are correct.";
+        }
+        return std::unexpected(detail_msg);
     }
 
     // Load first batch for preview and full data
@@ -557,6 +578,93 @@ void AppController::start_upload() {
     }).detach();
 }
 
+std::expected<void, std::string> AppController::update_log_signing_key(const std::string& key, const std::string& password) {
+    auto logger = LogManager::get_instance().get_core_logger();
+    logger->info("Updating log signing key...");
+
+    // Verify password first
+    auto verify_res = m_config_manager->verify_password(m_config_path, password);
+    if (!verify_res) {
+        logger->error("Password verification failed: {}", verify_res.error());
+        return verify_res;
+    }
+
+    m_config_manager->update_config("security", "log_signing_key", key);
+    
+    auto res = m_config_manager->save_encrypted_ini(m_config_path, password);
+    if (!res) {
+        logger->error("Failed to save updated configuration: {}", res.error());
+        return res;
+    }
+
+    // Apply immediately
+    LogManager::get_instance().set_signing_key(key);
+    logger->info("Log signing key updated and applied successfully.");
+    update_log("Log signing key updated and saved.");
+
+    return {};
+}
+
+std::expected<void, std::string> AppController::update_proxy(const std::string& proxy, const std::string& password) {
+    auto logger = LogManager::get_instance().get_core_logger();
+    logger->info("Updating proxy setting...");
+
+    // Verify password first
+    auto verify_res = m_config_manager->verify_password(m_config_path, password);
+    if (!verify_res) {
+        logger->error("Password verification failed: {}", verify_res.error());
+        return verify_res;
+    }
+
+    m_config_manager->update_config("networking", "proxy", proxy);
+    
+    auto res = m_config_manager->save_encrypted_ini(m_config_path, password);
+    if (!res) {
+        logger->error("Failed to save updated configuration: {}", res.error());
+        return res;
+    }
+
+    logger->info("Proxy setting updated successfully.");
+    update_log("Proxy setting updated and saved.");
+
+    return {};
+}
+
+std::string AppController::generate_random_key(size_t bytes) const {
+    if (sodium_init() < 0) return "";
+    
+    std::vector<unsigned char> key(bytes);
+    randombytes_buf(key.data(), key.size());
+    
+    std::string hex;
+    hex.reserve(bytes * 2);
+    static const char* dec2hex = "0123456789abcdef";
+    for (unsigned char b : key) {
+        hex += dec2hex[(b >> 4) & 0x0F];
+        hex += dec2hex[b & 0x0F];
+    }
+    
+    sodium_memzero(key.data(), key.size());
+    return hex;
+}
+
+std::string AppController::generate_ed25519_key() const {
+    if (sodium_init() < 0) return "";
+
+    std::vector<unsigned char> pk(crypto_sign_PUBLICKEYBYTES);
+    std::vector<unsigned char> sk(crypto_sign_SECRETKEYBYTES);
+
+    if (crypto_sign_keypair(pk.data(), sk.data()) != 0) {
+        return "";
+    }
+
+    char hex[crypto_sign_SECRETKEYBYTES * 2 + 1];
+    sodium_bin2hex(hex, sizeof(hex), sk.data(), sk.size());
+
+    sodium_memzero(sk.data(), sk.size());
+    return std::string(hex);
+}
+
 void AppController::update_log(const std::string& message) {
     if (m_window) {
         m_window->CallAfter([this, message]() {
@@ -597,11 +705,11 @@ void AppController::on_upload_complete(std::expected<void, std::string> result) 
     if (result) {
         update_log("Upload successful!");
         logger->info("Upload completed successfully");
-        audit_logger->info("SUCCESS: Upload of topic {} completed. OS User: {} | Computer: {}", m_current_topic, get_os_user(), get_computer_name());
+        audit_logger->info("ACTION: Upload | STATUS: SUCCESS | TOPIC: {} | USER: {} | HOST: {}", m_current_topic, get_os_user(), get_computer_name());
     } else {
         update_log(std::format("Upload failed: {}", result.error()));
         logger->error("Upload failed: {}", result.error());
-        audit_logger->error("FAILURE: Upload of topic {} failed: {}. OS User: {} | Computer: {}", m_current_topic, result.error(), get_os_user(), get_computer_name());
+        audit_logger->error("ACTION: Upload | STATUS: FAILURE | TOPIC: {} | REASON: {} | USER: {} | HOST: {}", m_current_topic, result.error(), get_os_user(), get_computer_name());
     }
     update_progress(100);
 }

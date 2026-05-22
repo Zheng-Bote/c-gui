@@ -6,7 +6,7 @@
 #
 # @file conanfile.py
 # @brief Dependency management for c-gui
-# @version 0.5.0
+# @version 0.6.0
 # @date 2026-05-19
 #
 # @author ZHENG Robert (robert@hase-zheng.net)
@@ -20,7 +20,7 @@ import os
 
 class CGuiRecipe(ConanFile):
     name = "c-gui"
-    version = "0.5.0"
+    version = "0.6.0"
     package_type = "application"
 
     # Binary configuration
@@ -35,6 +35,7 @@ class CGuiRecipe(ConanFile):
         self.requires("libsodium/[>=1.0.21 <2]")
         self.requires("valijson/[>=1.1 <2]")
         self.requires("libpqxx/[>=8.0 <9]")
+        self.requires("soci/[>=4.1 <5]")
         self.requires("librdkafka/[>=2.14 <3]")
         self.requires("inih/[>=62]")
         self.requires("spdlog/[>=1.15 <2]")
@@ -43,6 +44,7 @@ class CGuiRecipe(ConanFile):
         self.requires("openxlsx/[>=0.4 <1]")
 
     def configure(self):
+        self.options["soci"].with_oracle = True
         self.options["cpp-httplib"].with_openssl = True
         self.options["wxwidgets"].shared = True
         if self.settings.os == "Windows":

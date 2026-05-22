@@ -47,6 +47,30 @@ public:
     [[nodiscard]] std::expected<void, std::string> load_encrypted_ini(const std::filesystem::path& path, const std::string& password);
 
     /**
+     * @brief Verify if a password is correct for an existing encrypted config file.
+     * @param path Path to the encrypted INI file.
+     * @param password Password to verify.
+     * @return Success if password is correct, or error message.
+     */
+    [[nodiscard]] std::expected<void, std::string> verify_password(const std::filesystem::path& path, const std::string& password);
+
+    /**
+     * @brief Save and encrypt the current configuration to an INI file.
+     * @param path Path to the encrypted INI file.
+     * @param password Password for encryption.
+     * @return Success or error message.
+     */
+    [[nodiscard]] std::expected<void, std::string> save_encrypted_ini(const std::filesystem::path& path, const std::string& password);
+
+    /**
+     * @brief Update a configuration value.
+     * @param section Section name (can be hierarchical, e.g., "topics.HR").
+     * @param key Key name.
+     * @param value New value.
+     */
+    void update_config(const std::string& section, const std::string& key, const std::string& value);
+
+    /**
      * @brief Get the loaded configuration.
      * @return JSON object containing the configuration.
      */

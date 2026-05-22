@@ -132,6 +132,35 @@ public:
     void start_upload();
 
     /**
+     * @brief Update the log signing key in the configuration.
+     * @param key New signing key.
+     * @param password Password to re-encrypt the configuration.
+     * @return Success or error message.
+     */
+    [[nodiscard]] std::expected<void, std::string> update_log_signing_key(const std::string& key, const std::string& password);
+
+    /**
+     * @brief Update the proxy in the configuration.
+     * @param proxy Proxy string.
+     * @param password Password to re-encrypt the configuration.
+     * @return Success or error message.
+     */
+    [[nodiscard]] std::expected<void, std::string> update_proxy(const std::string& proxy, const std::string& password);
+
+    /**
+     * @brief Generate a secure random key.
+     * @param bytes Number of bytes for the key.
+     * @return Hex-encoded random key.
+     */
+    [[nodiscard]] std::string generate_random_key(size_t bytes = 32) const;
+
+    /**
+     * @brief Generate a valid Ed25519 secret key.
+     * @return Hex-encoded 64-byte secret key (128 characters).
+     */
+    [[nodiscard]] std::string generate_ed25519_key() const;
+
+    /**
      * @brief Set the main window reference.
      * @param window Pointer to MainWindow.
      */
@@ -163,6 +192,7 @@ private:
     MainWindow* m_window = nullptr;
     std::string m_current_topic;
     std::string m_date_format = "dd.mm.yyyy";
+    std::filesystem::path m_config_path;
     nlohmann::json m_current_data;
     nlohmann::json m_preview_data;
 

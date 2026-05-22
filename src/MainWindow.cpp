@@ -32,6 +32,9 @@ enum {
   ID_VALIDATE,
   ID_UPLOAD,
   ID_MANAGE_PLUGINS,
+  ID_SET_LOG_SIGNING_KEY,
+  ID_SET_PROXY,
+  ID_CONFIG_HELP,
   ID_DATE_FORMAT,
   ID_DATE_DELIMITER
 };
@@ -39,7 +42,10 @@ enum {
 wxBEGIN_EVENT_TABLE(MainWindow, wxFrame)
     EVT_MENU(wxID_EXIT, MainWindow::on_exit) 
     EVT_MENU(wxID_ABOUT, MainWindow::on_about)
+    EVT_MENU(ID_CONFIG_HELP, MainWindow::on_config_help)
     EVT_MENU(ID_MANAGE_PLUGINS, MainWindow::on_manage_plugins)
+    EVT_MENU(ID_SET_LOG_SIGNING_KEY, MainWindow::on_set_log_signing_key)
+    EVT_MENU(ID_SET_PROXY, MainWindow::on_set_proxy)
         EVT_COMBOBOX(ID_TOPIC_CHOICE, MainWindow::on_topic_selected)
             EVT_BUTTON(ID_LOAD_DATA, MainWindow::on_load_data)
                 EVT_BUTTON(ID_VALIDATE, MainWindow::on_validate)
@@ -57,14 +63,20 @@ wxBEGIN_EVENT_TABLE(MainWindow, wxFrame)
   auto *menu_file = new wxMenu;
   menu_file->Append(wxID_EXIT);
 
+  auto *menu_config = new wxMenu;
+  menu_config->Append(ID_SET_LOG_SIGNING_KEY, "Set Log Signing Key...");
+  menu_config->Append(ID_SET_PROXY, "Set Proxy...");
+
   auto *menu_manage = new wxMenu;
   menu_manage->Append(ID_MANAGE_PLUGINS, "&Plugins...\tCtrl-P");
 
   auto *menu_help = new wxMenu;
+  menu_help->Append(ID_CONFIG_HELP, "Config Help");
   menu_help->Append(wxID_ABOUT);
 
   auto *menu_bar = new wxMenuBar;
   menu_bar->Append(menu_file, "&File");
+  menu_bar->Append(menu_config, "&Config");
   menu_bar->Append(menu_manage, "&Manage");
   menu_bar->Append(menu_help, "&Help");
   SetMenuBar(menu_bar);
@@ -263,6 +275,24 @@ void MainWindow::on_about(wxCommandEvent &WXUNUSED(event)) {
   }).detach();
 }
 
+void MainWindow::on_config_help(wxCommandEvent &WXUNUSED(event)) {
+    wxString help_msg = 
+        "Configuration Help:\n\n"
+        "1. Log Signing Key\n"
+        "Provides cryptographic integrity for your audit logs using Ed25519.\n"
+        "- Activation: Select 'Config -> Set Log Signing Key'.\n"
+        "- Generation: Click 'Generate Random Key' to create a unique 128-character hex key.\n"
+        "- Applying: The key is active immediately and saved to your encrypted config.\n\n"
+        "2. Network Proxy\n"
+        "Configures a proxy server for all outgoing network connections.\n"
+        "- Configuration: Select 'Config -> Set Proxy'.\n"
+        "- Format: 'username:password@proxy.server.com:8080'.\n"
+        "- Deactivation: Leave the field empty to disable the proxy.\n\n"
+        "Note: All changes require your configuration password to re-encrypt the settings.";
+
+    wxMessageBox(help_msg, "Config Help", wxOK | wxICON_INFORMATION);
+}
+
 void MainWindow::on_manage_plugins(wxCommandEvent &WXUNUSED(event)) {
   auto plugins = m_controller->get_all_plugins();
 
@@ -412,6 +442,103 @@ void MainWindow::on_date_format_changed(wxCommandEvent &WXUNUSED(event)) {
     final_format.Replace(".", delimiter);
     
     m_controller->set_date_format(final_format.ToStdString());
+}
+
+void MainWindow::on_set_log_signing_key(wxCommandEvent &WXUNUSED(event)) {
+    wxDialog dialog(this, wxID_ANY, "Set Log Signing Key", wxDefaultPosition, wxSize(400, 250));
+    auto *sizer = new wxBoxSizer(wxVERTICAL);
+
+    sizer->Add(new wxStaticText(&dialog, wxID_ANY, "Log Signing Key (Hex):"), 0, wxALL, 10);
+    
+    auto *key_ctrl = new wxTextCtrl(&dialog, wxID_ANY, "");
+    const auto& config = m_controller->get_config();
+    if (config.contains("security") && config["security"].contains("log_signing_key")) {
+        key_ctrl->SetValue(wxString::FromUTF8(config["security"]["log_signing_key"].get<std::string>()));
+    }
+    sizer->Add(key_ctrl, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+
+    auto *gen_btn = new wxButton(&dialog, wxID_ANY, "Generate Random Key");
+    gen_btn->Bind(wxEVT_BUTTON, [this, key_ctrl](wxCommandEvent&) {
+        key_ctrl->SetValue(wxString::FromUTF8(m_controller->generate_ed25519_key()));
+    });
+    sizer->Add(gen_btn, 0, wxALL | wxALIGN_RIGHT, 10);
+
+    sizer->Add(new wxStaticText(&dialog, wxID_ANY, "Config Password (to re-encrypt):"), 0, wxALL, 10);
+    auto *pwd_ctrl = new wxTextCtrl(&dialog, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_PASSWORD);
+    sizer->Add(pwd_ctrl, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+
+    auto *btn_sizer = dialog.CreateButtonSizer(wxOK | wxCANCEL);
+    sizer->Add(btn_sizer, 0, wxALIGN_CENTER | wxALL, 10);
+
+    dialog.SetSizer(sizer);
+
+    if (dialog.ShowModal() == wxID_OK) {
+        std::string key = key_ctrl->GetValue().ToStdString();
+        std::string pwd = pwd_ctrl->GetValue().ToUTF8().data();
+
+        if (key.empty()) {
+            wxMessageBox("Key cannot be empty.", "Error", wxOK | wxICON_ERROR);
+            return;
+        }
+        if (pwd.empty()) {
+            wxMessageBox("Password is required to save changes.", "Error", wxOK | wxICON_ERROR);
+            return;
+        }
+
+        auto res = m_controller->update_log_signing_key(key, pwd);
+        if (!res) {
+            wxMessageBox(wxString::Format("Failed to update key: %s", res.error().c_str()), "Error", wxOK | wxICON_ERROR);
+        } else {
+            wxMessageBox("Log signing key updated successfully.", "Success", wxOK | wxICON_INFORMATION);
+        }
+    }
+}
+
+void MainWindow::on_set_proxy(wxCommandEvent &WXUNUSED(event)) {
+    wxDialog dialog(this, wxID_ANY, "Set Network Proxy", wxDefaultPosition, wxSize(400, 250));
+    auto *sizer = new wxBoxSizer(wxVERTICAL);
+
+    sizer->Add(new wxStaticText(&dialog, wxID_ANY, "Proxy (user:pass@host:port):"), 0, wxALL, 10);
+    
+    auto *proxy_ctrl = new wxTextCtrl(&dialog, wxID_ANY, "");
+    const auto& config = m_controller->get_config();
+    std::string current_proxy;
+    if (config.contains("networking") && config["networking"].contains("proxy")) {
+        current_proxy = config["networking"]["proxy"].get<std::string>();
+        proxy_ctrl->SetValue(wxString::FromUTF8(current_proxy));
+    }
+    
+    if (current_proxy.empty()) {
+        proxy_ctrl->SetHint("myuser:mypass@proxy.example.com:8080");
+    }
+    
+    sizer->Add(proxy_ctrl, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+
+    sizer->Add(new wxStaticText(&dialog, wxID_ANY, "Config Password (to re-encrypt):"), 0, wxALL, 10);
+    auto *pwd_ctrl = new wxTextCtrl(&dialog, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_PASSWORD);
+    sizer->Add(pwd_ctrl, 0, wxEXPAND | wxLEFT | wxRIGHT, 10);
+
+    auto *btn_sizer = dialog.CreateButtonSizer(wxOK | wxCANCEL);
+    sizer->Add(btn_sizer, 0, wxALIGN_CENTER | wxALL, 10);
+
+    dialog.SetSizer(sizer);
+
+    if (dialog.ShowModal() == wxID_OK) {
+        std::string proxy = proxy_ctrl->GetValue().ToStdString();
+        std::string pwd = pwd_ctrl->GetValue().ToStdString();
+
+        if (pwd.empty()) {
+            wxMessageBox("Password is required to save changes.", "Error", wxOK | wxICON_ERROR);
+            return;
+        }
+
+        auto res = m_controller->update_proxy(proxy, pwd);
+        if (!res) {
+            wxMessageBox(wxString::Format("Failed to update proxy: %s", res.error().c_str()), "Error", wxOK | wxICON_ERROR);
+        } else {
+            wxMessageBox("Proxy setting updated successfully.", "Success", wxOK | wxICON_INFORMATION);
+        }
+    }
 }
 
 } // namespace cgui

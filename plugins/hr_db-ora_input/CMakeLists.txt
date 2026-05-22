@@ -17,12 +17,29 @@ add_library(hr_db-ora_input SHARED HrDbOraInputPlugin.cpp HrDbOraInputPlugin.hpp
 
 target_include_directories(hr_db-ora_input PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-# Find nlohmann_json
+# Find nlohmann_json, soci and spdlog
 find_package(nlohmann_json REQUIRED)
-target_link_libraries(hr_db-ora_input PRIVATE nlohmann_json::nlohmann_json)
+find_package(soci REQUIRED COMPONENTS core oracle)
+find_package(spdlog REQUIRED)
 
-# Note: In a real implementation, you would add Oracle client libraries here
-# e.g., find_package(OracleRequired)
+target_include_directories(hr_db-ora_input PRIVATE 
+    ${CMAKE_SOURCE_DIR}/include
+    ${SOCI_INCLUDE_DIRS}
+)
+
+target_link_libraries(hr_db-ora_input PRIVATE 
+    nlohmann_json::nlohmann_json
+    spdlog::spdlog
+    ${SOCI_LIBRARIES}
+)
+
+# Fallback: link specifically if variables are empty (some Conan generators)
+if(NOT SOCI_LIBRARIES)
+    target_link_libraries(hr_db-ora_input PRIVATE 
+        soci::soci_core
+        soci::soci_oracle
+    )
+endif()
 
 set_target_properties(hr_db-ora_input PROPERTIES
     PREFIX ""

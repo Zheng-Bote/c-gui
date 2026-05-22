@@ -19,34 +19,58 @@ limitations under the License.
 
 This product includes software developed by third parties. The following components are bundled with this distribution or used during the build process:
 
-- libcurl (>=8.9)
-  License: libcurl License (MIT/X derivative)
-  Attribution: This product includes software developed by the curl project (https://curl.se/).
+- wxWidgets (>=3.3)
+  License: wxWindows Library Licence
+  Attribution: Copyright (c) 1992-2024 Julian Smart, Robert Roebling et al. (https://www.wxwidgets.org/)
 
 - nlohmann_json (>=3.12)
   License: MIT
   Attribution: Copyright (c) 2013-2022 Niels Lohmann (https://github.com/nlohmann/json).
 
-- yaml-cpp (>=0.8)
-  License: MIT
-  Attribution: Copyright (c) 2008-2015 Jesse Beder.
+- libcurl (>=8.20)
+  License: libcurl License (MIT/X derivative)
+  Attribution: Copyright (c) 1996 - 2024, Daniel Stenberg, <daniel@haxx.se>, et al. (https://curl.se/).
 
-- tomlplusplus (>=3.4)
-  License: MIT
-  Attribution: Copyright (c) Mark Gillard (https://github.com/marzer/tomlplusplus).
+- libsodium (>=1.0.21)
+  License: ISC License
+  Attribution: Copyright (c) 2013-2024 Frank Denis <j at pureftpd dot org> (https://libsodium.org/).
 
-- argparse (>=3.1)
+- valijson (>=1.1)
+  License: BSD 3-Clause License
+  Attribution: Copyright (c) 2013-2024 Tristan Brindle (https://github.com/tristanbrindle/valijson).
+
+- libpqxx (>=8.0)
+  License: BSD 3-Clause License
+  Attribution: Copyright (c) 2000-2024 Jeroen T. Vermeulen (https://pqxx.org/).
+
+- soci (>=4.1)
+  License: Boost Software License - Version 1.0
+  Attribution: Copyright (c) 2004-2025Mateusz Loskot, Paul Brannan, Adi Sieker, Kresimir Fresl, Rory Driscoll, Vadim Zeitlin, Joaquin M. Lopez Munoz (https://github.com/SOCI-project/soci/)
+
+- librdkafka (>=2.14)
+  License: BSD 2-Clause License
+  Attribution: Copyright (c) 2012-2024 Magnus Edenhill (https://github.com/edenhill/librdkafka).
+
+- inih (>=62)
+  License: BSD 3-Clause License
+  Attribution: Copyright (c) 2009-2024 Ben Hoyt (https://github.com/benhoyt/inih).
+
+- spdlog (>=1.15)
   License: MIT
-  Attribution: Copyright (c) 2020 Prashanth Ganapathy (https://github.com/p-ranav/argparse).
+  Attribution: Copyright (c) 2016 Gabi Melman (https://github.com/gabime/spdlog).
+
+- catch2 (>=3.14)
+  License: BSL-1.0
+  Attribution: Copyright (c) 2010-2024 Catch2 Authors (https://github.com/catchorg/Catch2).
 
 - cpp-httplib (>=0.44.0)
   License: MIT
   Attribution: Copyright (c) 2015 Yuji Kubo (https://github.com/yhirose/cpp-httplib).
 
+- OpenXLSX (>=0.4.1)
+  License: MIT
+  Attribution: Copyright (c) 2024 Troels K. Dalgaard (https://github.com/troldal/OpenXLSX).
+
 - gh-update-checker (>=1.1.1)
   License: LGPL-3.0
   Attribution: Copyright (c) 2026 ZHENG Robert (https://github.com/Zheng-Bote/gh-update-checker).
-
-- OpenXLSX (>=0.4.1)
-  License: BSD 3-Clause License
-  Attribution: Copyright (c) 2024 Troels K. Dalgaard (https://github.com/troldal/OpenXLSX).

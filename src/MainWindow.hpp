@@ -82,7 +82,10 @@ private:
 
     void on_exit(wxCommandEvent& event);
     void on_about(wxCommandEvent& event);
+    void on_config_help(wxCommandEvent& event);
     void on_manage_plugins(wxCommandEvent& event);
+    void on_set_log_signing_key(wxCommandEvent& event);
+    void on_set_proxy(wxCommandEvent& event);
     void on_topic_selected(wxCommandEvent& event);
     void on_load_data(wxCommandEvent& event);
     void on_validate(wxCommandEvent& event);
