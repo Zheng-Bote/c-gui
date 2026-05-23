@@ -1,7 +1,7 @@
 # Technical Documentation — System Overview
 
 > **Project:** c-gui  
-> **Version:** 0.5.0  
+> **Version:** 0.6.0  
 > **License:** Apache-2.0  
 > **Author:** ZHENG Robert  
 > **Repository:** <https://github.com/Zheng-Bote/c-gui>
@@ -10,13 +10,13 @@
 
 ## 1. Introduction
 
-**c-gui** is a C++23 desktop application designed for secure data validation and upload to SaaS endpoints. It follows a **Dual-Plugin Architecture** where each data domain (topic) is handled by two specialized plugins: one for data ingestion (Input) and one for API integration (Upload).
+**c-gui** is a C++23 desktop application designed for secure data validation and upload to SaaS endpoints. It follows a **Hybrid Plugin Architecture** where each data domain (topic) can be handled by native shared libraries or sandboxed **WebAssembly (WASM)** modules.
 
 The application provides an encrypted configuration system, JSON Schema validation, cryptographic audit log signing, background worker threads, and a wxWidgets-based graphical user interface.
 
 ### 1.1 Purpose
 
-- Collect data from heterogeneous sources (CSV, JSON, XLSX, databases, Kafka, S3/MFT)
+- Collect data from heterogeneous sources (CSV, JSON, XLSX, databases, Kafka, S3/MFT, REST APIs)
 - Validate data against JSON Schemas at rest
 - Upload validated data to SaaS REST endpoints with per-topic authentication
 - Maintain non-repudiation via Ed25519-signed audit logs
@@ -25,11 +25,12 @@ The application provides an encrypted configuration system, JSON Schema validati
 
 | Goal | Implementation |
 |------|---------------|
-| Modular data ingestion | ABI-stable C plugin interface, dynamically loaded via dlopen/LoadLibrary |
-| Strong security at rest | XChaCha20-Poly1305 + Argon2id for config encryption |
+| Modular data ingestion | Hybrid ABI-stable C interface & Wasmtime-hosted sandboxed modules |
+| Secure by Design | XChaCha20-Poly1305 + Argon2id for config encryption, Ed25519 for log signing |
 | Non-repudiation | Ed25519-signed audit logs via crypto_sign_detached |
 | Responsive UI | Background worker threads (std::thread + wxWindow::CallAfter) |
-| Dynamic discovery | Filesystem scan for plugin .so/.dll files at runtime |
+| Dynamic discovery | Filesystem scan for .so/.dll and .wasm files at runtime |
+| Sandboxed networking | Host-assisted HTTP requests for WASM plugins via libcurl bridge |
 | Cross-platform | CMake + Conan + platform-conditional code paths |
 
 ---
@@ -39,15 +40,21 @@ The application provides an encrypted configuration system, JSON Schema validati
 | Component | Technology | Purpose |
 |-----------|-----------|---------|
 | Language | C++23 | std::expected, std::format, std::filesystem |
-| GUI Framework | wxWidgets 3.2+ | Native desktop GUI (Win32 / GTK3 / macOS Cocoa) |
+| GUI Framework | wxWidgets 3.3+ | Native desktop GUI (Win32 / GTK3 / macOS Cocoa) |
 | Build System | CMake >= 3.28 | Meta-build with presets |
 | Package Manager | Conan v2 | Third-party dependency resolution |
 | JSON | nlohmann/json | Data interchange, config parsing |
 | JSON Schema | valijson | Runtime schema validation |
-| HTTP | libcurl | SaaS uploads, auth requests |
+| HTTP | libcurl | SaaS uploads, auth requests, WASM network bridge |
 | Encryption | libsodium | XChaCha20-Poly1305, Argon2id, Ed25519 |
 | Logging | spdlog | Rotating file logs, console sink, GUI callback sink |
-| INI Parsing | inih (minIni) | Encrypted INI file parsing |
+| INI Parsing | Custom | Robust, unlimited-length encrypted INI parsing |
+| WASM Engine | Wasmtime | Hosting sandboxed ingest plugins |
+| Spreadsheets | OpenXLSX | XLSX input plugin |
+| Databases | SOCI (Oracle), libpqxx | Database input plugins |
+| Messaging | librdkafka | Kafka input plugin |
+| Testing | Catch2 v3 | Unit test framework |
+| Update Checker | gh-update-checker (FetchContent) | Non-blocking GitHub release check |
 | Spreadsheets | OpenXLSX | XLSX input plugin |
 | Databases | libpqxx | PostgreSQL input plugin |
 | Messaging | librdkafka | Kafka input plugin (stub) |

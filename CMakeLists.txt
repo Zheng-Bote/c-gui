@@ -90,11 +90,11 @@ find_package(nlohmann_json REQUIRED)
 find_package(CURL REQUIRED)
 find_package(libsodium REQUIRED)
 find_package(valijson REQUIRED)
-find_package(inih REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(OpenXLSX REQUIRED)
 find_package(soci REQUIRED COMPONENTS core oracle)
 find_package(RdKafka REQUIRED)
+find_package(wasmtime REQUIRED)
 
 # --- Subdirectories ---
 add_subdirectory(configure)

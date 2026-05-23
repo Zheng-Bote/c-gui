@@ -37,11 +37,11 @@ class CGuiRecipe(ConanFile):
         self.requires("libpqxx/[>=8.0 <9]")
         self.requires("soci/[>=4.1 <5]")
         self.requires("librdkafka/[>=2.14 <3]")
-        self.requires("inih/[>=62]")
         self.requires("spdlog/[>=1.15 <2]")
         self.requires("catch2/[>=3.14 <4]")
         self.requires("cpp-httplib/[>=0.44 <1]")
         self.requires("openxlsx/[>=0.4 <1]")
+        self.requires("wasmtime/[>=22 <38]")
 
     def configure(self):
         self.options["soci"].with_oracle = True

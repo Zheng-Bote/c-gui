@@ -11,7 +11,7 @@ c-gui uses **CMake >= 3.28** as its meta-build system with **Conan v2** for depe
 | `c-gui` | Executable | `${BINARY_DIR}/bin/c-gui` |
 | `encrypt_tool` | Executable | `${BINARY_DIR}/bin/encrypt_tool` |
 | `cgui_core` | Static Library | `${BINARY_DIR}/lib/libcgui_core.a` |
-| Plugin .so/.dll files | Shared Libraries | `${BINARY_DIR}/plugins/*.so` |
+| Plugin .so/.dll/.wasm files | Shared/WASM | `${BINARY_DIR}/plugins/*.so` |
 | `unit_tests` | Executable | `${BINARY_DIR}/tests/unit_tests` |
 
 ### 1.1 Build Graph
@@ -19,16 +19,16 @@ c-gui uses **CMake >= 3.28** as its meta-build system with **Conan v2** for depe
 ```mermaid
 graph TD
     subgraph "Dependencies (Conan + FetchContent)"
-        WX[wxWidgets 3.2+]
+        WX[wxWidgets 3.3+]
         NL[nlohmann_json]
         CL[libcurl]
         LS[libsodium]
         VJ[valijson]
-        IN[inih]
         SD[spdlog]
         OX[OpenXLSX]
         PQ[libpqxx]
         RK[librdkafka]
+        WT[wasmtime]
         CT[Catch2 v3]
         GH[gh-update-checker\nFetchContent]
         CH[cpp-httplib]
@@ -51,8 +51,8 @@ graph TD
     LS --> CG
     LS --> ET
     VJ --> CG
-    IN --> CG
     SD --> CG
+    WT --> CG
     OX --> PL
     PQ --> PL
     RK --> PL
@@ -71,7 +71,7 @@ The `conanfile.py` declares all external dependencies:
 ```python
 class CGuiRecipe(ConanFile):
     name = "c-gui"
-    version = "0.5.0"
+    version = "0.6.0"
     package_type = "application"
 
     def requirements(self):
@@ -82,11 +82,11 @@ class CGuiRecipe(ConanFile):
         self.requires("valijson/[>=1.1 <2]")
         self.requires("libpqxx/[>=8.0 <9]")
         self.requires("librdkafka/[>=2.14 <3]")
-        self.requires("inih/[>=62]")
         self.requires("spdlog/[>=1.15 <2]")
         self.requires("catch2/[>=3.14 <4]")
         self.requires("cpp-httplib/[>=0.44 <1]")
         self.requires("openxlsx/[>=0.4 <1]")
+        self.requires("wasmtime/[>=22 <38]")
 
     def configure(self):
         self.options["cpp-httplib"].with_openssl = True
@@ -176,9 +176,9 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--disable-new-dtags")
 cgui_core STATIC LIBRARY:
   Sources: AppController, MainWindow, ConfigManager, LogManager,
            AuthManager, PluginLoader, TopicRegistry, SchemaManager,
-           Validator, Uploader
+           Validator, Uploader, WasmDataPlugin
   Links: wxWidgets, nlohmann_json, libcurl, libsodium, valijson,
-         inih, spdlog, gh_update_checker
+         spdlog, gh_update_checker, wasmtime
 
 c-gui EXECUTABLE:
   Sources: main.cpp

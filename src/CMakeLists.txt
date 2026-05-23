@@ -25,6 +25,7 @@ set(CORE_SOURCES
     SchemaManager.cpp
     Validator.cpp
     Uploader.cpp
+    WasmDataPlugin.cpp
 )
 
 add_library(cgui_core STATIC ${CORE_SOURCES})
@@ -40,9 +41,9 @@ target_link_libraries(cgui_core PUBLIC
     CURL::libcurl
     libsodium::libsodium
     ValiJSON::valijson
-    inih::inih
     spdlog::spdlog
     gh_update_checker::gh_update_checker
+    wasmtime::wasmtime
 )
 
 # --- Executable ---

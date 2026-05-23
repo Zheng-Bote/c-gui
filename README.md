@@ -14,84 +14,86 @@
 
 ![CXX](https://img.shields.io/badge/C++-23-blue?logo=cplusplus)
 
-c-gui is a C++23 desktop application designed for secure data validation and upload to SaaS endpoints. It features a robust **Dual-Plugin Strategy** for flexible data input and output, and utilizes `libsodium` for hardware-accelerated encryption of configuration secrets.
+**c-gui** is a secure, high-performance C++23 desktop application designed for validating and uploading data to SaaS endpoints. It features a modern dual-plugin architecture that supports both native C++ modules and sandboxed WebAssembly (WASM) plugins for flexible data input and output, and utilizes `libsodium` for hardware-accelerated encryption of configuration secrets.
 
-## Features
+---
 
-- **Dual-Plugin Architecture**: Every data topic is handled by specialized Ingest (Input) and Upload (Output) plugins.
-- **Dynamic Interface Discovery**: Automatically detects available data interfaces (CSV, JSON, XLSX, SQLite, Oracle, PostgreSQL, Kafka, S3-MFT) based on installed plugins.
-- **Topic-Aware UI**: GUI dynamically adapts its data loading options and date format settings based on the selected topic and available plugins.
-- **File Dialog Support**: Seamlessly browse for CSV, JSON, XLSX, and SQLite input files with pre-configured default path suggestions.
-- **Dynamic Configuration**: Built-in "Config" menu to update Log Signing Keys and Network Proxy settings directly from the GUI with automatic encrypted persistence.
-- **Secure Persistence**: Password-verified configuration saving prevents accidental file corruption.
-- **Configurable Upload Payloads**: Override plugin-specific upload options per topic via INI configuration.
-- **Flexible Date Formatting**: Customize date component order and delimiters directly in the GUI.
-- **Plugin Management**: Built-in dialog to inspect discovered plugins, their versions, and capabilities.
-- **JSON Schema Validation**: Rigorous validation of incoming data against predefined schemas.
-- **Secure Configuration**: INI files are encrypted on disk using XChaCha20-Poly1305 and Argon2id for password hashing.
-- **Audit Log Signing**: Cryptographically sign critical audit logs using Ed25519 to ensure non-repudiation.
-- **Credential Masking**: Automatically redacts sensitive data (passwords, API keys) from logs and GUI status updates.
-- **Global Proxy Support**: Centralized networking configuration with fallback support for all plugins and update checks.
-- **Update Notifications**: Non-blocking check for new versions via asynchronous GitHub integration (v1.1.0).
-- **Advanced Logging**: Real-time GUI status updates combined with persistent `spdlog` file rotation, OS user identification, and computer name audit trails.
-- **Async Processing**: Background worker threads for validation and upload tasks to ensure a smooth UI experience.
-- **Cross-platform**: Native support for Windows 11 (with Oracle Client v19 support via SOCI) and Linux.
+## 🚀 Key Features
 
-## Prerequisites
+- **Hybrid Plugin System**: Seamlessly load native shared libraries (`.dll`/`.so`) and WebAssembly modules (`.wasm`) using the integrated **Wasmtime** engine.
+- **Secure by Design**:
+  - Configuration encryption using **XChaCha20-Poly1305** and **Argon2id**.
+  - Non-repudiation via **Ed25519-signed** audit logs.
+  - Redaction of sensitive credentials from logs and UI updates.
+- **Flexible Data Ingestion**:
+  - Native support for CSV, JSON, XLSX, PostgreSQL, and Oracle (via SOCI).
+  - WASM-based REST API ingestion with **Host-Assisted Networking** (libcurl bridge).
+- **Modern UI**: Built with **wxWidgets**, featuring a responsive design, background worker threads, and integrated branding.
+- **Robust Configuration**: Custom INI parser supporting unlimited line lengths and complex connection strings.
 
-- **C++23 Compiler**: GCC 13+, Clang 16+, or MSVC 19.36+.
-- **CMake**: >= 3.28.
-- **Conan**: v2.x.
-- **wxWidgets**: 3.2+ (installed via Conan).
-- **libsodium**: 1.0.18+ (installed via Conan).
-- **librdkafka**: (for Kafka support).
+---
+
+## 🛠️ Prerequisites
+
+- **Compiler**: C++23 compatible (MSVC 19.36+, GCC 13+, Clang 17+)
+- **Build Tools**: CMake 3.28+, Conan v2.x
+- **WASM Development**: [Go](https://go.dev/) 1.21+ or [TinyGo](https://tinygo.org/) for building WASM plugins.
 - **Oracle Instant Client**: (for Oracle support).
 
-## Build Instructions
+---
 
-1. **Install Dependencies**:
+## 📦 Building and Running
 
-   ```bash
-   conan install . --output-folder=build --build=missing
-   ```
-
-2. **Configure**:
-
-2a. **Linux**
-
-   ```bash
-   cmake --preset conan-release
-   ```
-
-2b. **Windows**
-
+### 1. Install Dependencies
 ```bash
-   cmake --preset conan-default
+conan install . --output-folder=build --build=missing
 ```
 
-3. **Build**
-
+### 2. Configure & Build
 ```bash
-   cmake --build --preset conan-release -j 2
+# Windows (Visual Studio)
+cmake --preset conan-default
+cmake --build --preset conan-default -j
+
+# Linux / Ninja
+cmake --preset conan-release
+cmake --build --preset conan-release -j
 ```
 
-## Usage
-
-### Encrypting Configuration
-
-Before running the app, you need an encrypted configuration file. Use the `encrypt_tool`:
-
+### 3. Setup Configuration
+Generate an encrypted configuration file from a template:
 ```bash
-./build/src/encrypt_tool sample.ini config.enc "your_secure_password"
+./build/bin/encrypt_tool sample.ini config.enc "your_password"
 ```
 
-### Running the Application
+> [!NOTE]
+> for more secured handling, see [docs/encrypt_tool_readme.md](docs/encrypt_tool_readme.md)
 
-Launch the main application and enter your password when prompted:
+### 4. Launch
+```bash
+./build/bin/c-gui
+```
+
+## Testing
+
+Run unit tests using `ctest`:
 
 ```bash
-./build/src/c-gui
+cd build
+ctest --output-on-failure
 ```
+
+---
+
+## 🧩 WebAssembly Plugins
+
+The application now supports WASM plugins for safe and portable data ingestion.
+
+- **Storage**: Place `.wasm` files in the `./plugins/data/` directory.
+- **Capabilities**: Access host-side HTTP services and system trust stores via the `env` host module.
+- **Examples**: See `plugins/location_rest-json_input_wasm` for a Go-based REST API plugin.
+
+---
 
 ## Architecture
 
@@ -118,26 +120,21 @@ graph TD
     B -.->|JSON| H
 ```
 
-## Testing
+## 📜 Documentation
 
-Run unit tests using `ctest`:
-
-```bash
-cd build
-ctest --output-on-failure
-```
+- [System Overview](docs/technical/01-overview.md)
+- [Architecture Details](docs/architecture/architecture.md)
+- [Plugin Development Guide](docs/technical/08-plugin-development-guide.md)
+- [Security Architecture](docs/technical/05-security-architecture.md)
+- [Changelog](CHANGELOG.md)
 
 ---
 
-## 📄 Changelog
+## ⚖️ License
 
-For a detailed history of changes, see the [CHANGELOG.md](CHANGELOG.md).
+Distributed under the **Apache-2.0 License**. See `LICENSE` and `NOTICE` for more information.
 
-## 📜 License
-
-This project is licensed under the ![GitHub License](https://img.shields.io/github/license/Zheng-Bote/c-gui) License - see the LICENSE file for details.
-
-©️ Copyright (c) 2026 ZHENG Robert
+Copyright (c) 2026 ZHENG Robert (robert@hase-zheng.net)
 
 ## 👤 Author
 

@@ -17,6 +17,7 @@
 
 #include "PluginLoader.hpp"
 #include "LogManager.hpp"
+#include "WasmDataPlugin.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
@@ -34,6 +35,18 @@ std::expected<void, std::string> PluginLoader::load(const std::filesystem::path&
     auto logger = LogManager::get_instance().get_core_logger();
     logger->info("Loading plugin from: {}", path.string());
     unload();
+
+    if (path.extension() == ".wasm") {
+        try {
+            m_plugin = new WasmDataPlugin(path);
+            m_is_wasm = true;
+            logger->info("WASM plugin loaded successfully: {}", path.string());
+            return {};
+        } catch (const std::exception& e) {
+            logger->error("Failed to load WASM plugin: {}", e.what());
+            return std::unexpected(std::string("Failed to load WASM plugin: ") + e.what());
+        }
+    }
 
 #ifdef _WIN32
     m_handle = LoadLibraryW(path.wstring().c_str());
@@ -57,15 +70,19 @@ std::expected<void, std::string> PluginLoader::load(const std::filesystem::path&
 #else
     auto create_func = reinterpret_cast<CreatePluginFunc>(dlsym(m_handle, "create_plugin"));
     m_destroy_func = reinterpret_cast<DestroyPluginFunc>(dlsym(m_handle, "destroy_plugin"));
+#endif
     
     if (!create_func || !m_destroy_func) {
+#ifndef _WIN32
         const char* err = dlerror();
         std::string err_msg = err ? err : "Symbol not found";
+#else
+        std::string err_msg = "Symbol not found (error: " + std::to_string(GetLastError()) + ")";
+#endif
         logger->error("Failed to find required symbols in plugin: {} (error: {})", path.string(), err_msg);
         unload();
         return std::unexpected("Failed to find required symbols: " + err_msg);
     }
-#endif
 
     m_plugin = create_func();
     if (!m_plugin) {
@@ -74,14 +91,20 @@ std::expected<void, std::string> PluginLoader::load(const std::filesystem::path&
         return std::unexpected("Plugin factory failed to create plugin instance");
     }
 
-    logger->info("Plugin loaded successfully: {}", path.string());
+    m_is_wasm = false;
+    logger->info("Native plugin loaded successfully: {}", path.string());
     return {};
 }
 
 void PluginLoader::unload() {
-    if (m_plugin && m_destroy_func) {
-        LogManager::get_instance().get_core_logger()->info("Unloading plugin instance");
-        m_destroy_func(m_plugin);
+    if (m_plugin) {
+        if (m_is_wasm) {
+            LogManager::get_instance().get_core_logger()->info("Unloading WASM plugin instance");
+            delete m_plugin;
+        } else if (m_destroy_func) {
+            LogManager::get_instance().get_core_logger()->info("Unloading native plugin instance");
+            m_destroy_func(m_plugin);
+        }
         m_plugin = nullptr;
     }
 
@@ -94,6 +117,7 @@ void PluginLoader::unload() {
         m_handle = nullptr;
     }
     m_destroy_func = nullptr;
+    m_is_wasm = false;
 }
 
 IPlugin* PluginLoader::get_plugin() const {

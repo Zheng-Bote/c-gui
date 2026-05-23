@@ -56,8 +56,15 @@ wxBEGIN_EVENT_TABLE(MainWindow, wxFrame)
 
                             MainWindow::MainWindow(const wxString &title,
                                                    AppController *controller)
-    : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(800, 600)),
+    : wxFrame(nullptr, wxID_ANY, title, wxDefaultPosition, wxSize(800, 700)),
       m_controller(controller) {
+
+  wxInitAllImageHandlers();
+
+  // Set Icon
+  if (std::filesystem::exists("./favicon.ico")) {
+      SetIcon(wxIcon("./favicon.ico", wxBITMAP_TYPE_ICO));
+  }
 
   // Menu Bar
   auto *menu_file = new wxMenu;
@@ -219,18 +226,45 @@ void MainWindow::update_buttons(bool can_validate, bool can_upload) {
 void MainWindow::on_exit(wxCommandEvent &WXUNUSED(event)) { Close(true); }
 
 void MainWindow::on_about(wxCommandEvent &WXUNUSED(event)) {
-  wxString about_msg = wxString::Format(
+  wxDialog about_dialog(this, wxID_ANY, "About C GUI", wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE);
+  auto *sizer = new wxBoxSizer(wxVERTICAL);
+
+  // Logo
+  if (std::filesystem::exists("./logo.png")) {
+      wxImage logo_img("./logo.png", wxBITMAP_TYPE_PNG);
+      if (logo_img.IsOk()) {
+          int h = logo_img.GetHeight();
+          int w = logo_img.GetWidth();
+          if (h > 100) {
+              double ratio = 100.0 / h;
+              logo_img.Rescale(static_cast<int>(w * ratio), 100, wxIMAGE_QUALITY_HIGH);
+          }
+          auto *logo_bitmap = new wxStaticBitmap(&about_dialog, wxID_ANY, wxBitmap(logo_img));
+          sizer->Add(logo_bitmap, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 15);
+      }
+  }
+
+  wxString about_text = wxString::Format(
       "C GUI\n%s\n\nVersion: %s\nAuthor: %s\nLicense: %s",
       rz::config::PROJECT_DESCRIPTION,
       rz::config::VERSION,
       rz::config::AUTHOR,
       rz::config::LICENSE);
 
+  auto *text = new wxStaticText(&about_dialog, wxID_ANY, about_text, wxDefaultPosition, wxDefaultSize, wxALIGN_CENTER_HORIZONTAL);
+  sizer->Add(text, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 10);
+
+  // Update check message placeholder
+  auto *update_text = new wxStaticText(&about_dialog, wxID_ANY, "Checking for updates...", wxDefaultPosition, wxDefaultSize, wxALIGN_CENTER_HORIZONTAL);
+  sizer->Add(update_text, 0, wxALL | wxALIGN_CENTER_HORIZONTAL, 10);
+
+  sizer->Add(about_dialog.CreateButtonSizer(wxOK), 0, wxALIGN_CENTER | wxALL, 10);
+  about_dialog.SetSizerAndFit(sizer);
+
   // Use the new async feature from gh-update-checker v1.1.0
   std::string repo_url(rz::config::PROJECT_HOMEPAGE_URL);
   
-  // Sanitize URL: gh-update-checker v1.1.0 regex is strict: https://github.com/owner/repo
-  // It fails on www.github.com or missing https://
+  // Sanitize URL
   if (repo_url.find("www.github.com") != std::string::npos) {
       size_t pos = repo_url.find("www.");
       repo_url.erase(pos, 4);
@@ -238,7 +272,7 @@ void MainWindow::on_about(wxCommandEvent &WXUNUSED(event)) {
   if (repo_url.find("http://") == 0) {
       repo_url.replace(0, 7, "https://");
   } else if (repo_url.find("https://") != 0) {
-      repo_url = "https://github.com/" + repo_url; // Assume owner/repo if prefix is missing
+      repo_url = "https://github.com/" + repo_url;
   }
 
   std::string local_version(rz::config::VERSION);
@@ -249,30 +283,37 @@ void MainWindow::on_about(wxCommandEvent &WXUNUSED(event)) {
     proxy = config["networking"]["proxy"].get<std::string>();
   }
 
-  // We run this in a separate thread to keep the UI responsive
-  std::thread([this, about_msg, repo_url, local_version, proxy]() {
+  // Handle update check in background
+  std::thread([this, &about_dialog, update_text, repo_url, local_version, proxy]() {
     try {
       auto future = proxy.empty() ? 
                     ghupdate::check_github_update_async(repo_url, local_version) : 
                     ghupdate::check_github_update_async(repo_url, local_version, proxy);
       auto result = future.get();
 
-      this->CallAfter([this, about_msg, result]() {
-        wxString final_msg = about_msg;
-        if (result.hasUpdate) {
-          final_msg += wxString::Format("\n\nUpdate available: %s", result.latestVersion);
-        } else {
-          final_msg += "\n\nYou are running the latest version.";
+      this->CallAfter([update_text, result, &about_dialog]() {
+        if (update_text) {
+          if (result.hasUpdate) {
+            update_text->SetLabel(wxString::Format("Update available: %s", result.latestVersion));
+            update_text->SetForegroundColour(*wxRED);
+          } else {
+            update_text->SetLabel("You are running the latest version.");
+            update_text->SetForegroundColour(wxColour(0, 128, 0)); // Dark Green
+          }
+          about_dialog.Layout();
         }
-        wxMessageBox(final_msg, "About C GUI", wxOK | wxICON_INFORMATION);
       });
     } catch (const std::exception &e) {
-      this->CallAfter([this, about_msg, error_msg = std::string(e.what())]() {
-        wxString final_msg = about_msg + wxString::Format("\n\n(Update check failed: %s)", error_msg);
-        wxMessageBox(final_msg, "About C GUI", wxOK | wxICON_INFORMATION);
+      this->CallAfter([update_text, error_msg = std::string(e.what()), &about_dialog]() {
+        if (update_text) {
+          update_text->SetLabel(wxString::Format("(Update check failed: %s)", error_msg));
+          about_dialog.Layout();
+        }
       });
     }
   }).detach();
+
+  about_dialog.ShowModal();
 }
 
 void MainWindow::on_config_help(wxCommandEvent &WXUNUSED(event)) {

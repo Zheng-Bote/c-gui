@@ -59,6 +59,7 @@ public:
 private:
     void* m_handle = nullptr;
     IPlugin* m_plugin = nullptr;
+    bool m_is_wasm = false;
 
     using CreatePluginFunc = IPlugin* (*)();
     using DestroyPluginFunc = void (*)(IPlugin*);

@@ -91,6 +91,7 @@ const std::string kLibExt = ".dll";
 #else
 const std::string kLibExt = ".so";
 #endif
+const std::string kWasmExt = ".wasm";
 
 AppController::AppController()
     : m_config_manager(std::make_unique<ConfigManager>()),
@@ -203,7 +204,17 @@ std::expected<void, std::string> AppController::init(const std::filesystem::path
 
 std::filesystem::path AppController::get_plugin_path(const std::string& name, PluginType type) const {
     std::filesystem::path base_dir = (type == PluginType::DATA) ? m_data_plugins_dir : m_upload_plugins_dir;
-    return base_dir / (name + kLibExt);
+    
+    // Check for native extension first
+    std::filesystem::path native_path = base_dir / (name + kLibExt);
+    if (std::filesystem::exists(native_path)) return native_path;
+    
+    // Fallback to WASM extension
+    std::filesystem::path wasm_path = base_dir / (name + kWasmExt);
+    if (std::filesystem::exists(wasm_path)) return wasm_path;
+    
+    // Default to native for legacy/error handling
+    return native_path;
 }
 
 std::vector<std::string> AppController::get_topics() const {
@@ -237,9 +248,12 @@ std::vector<std::string> AppController::get_available_interfaces(const std::stri
     if (!std::filesystem::exists(m_data_plugins_dir)) return interfaces;
 
     std::string prefix = topic + "_";
-    std::string suffix = "_input" + kLibExt;
+    std::string suffix_native = "_input" + kLibExt;
+    std::string suffix_wasm = "_input" + kWasmExt;
+    
     std::transform(prefix.begin(), prefix.end(), prefix.begin(), ::tolower);
-    std::transform(suffix.begin(), suffix.end(), suffix.begin(), ::tolower);
+    std::transform(suffix_native.begin(), suffix_native.end(), suffix_native.begin(), ::tolower);
+    std::transform(suffix_wasm.begin(), suffix_wasm.end(), suffix_wasm.begin(), ::tolower);
 
     for (const auto& entry : std::filesystem::directory_iterator(m_data_plugins_dir)) {
         if (!entry.is_regular_file()) continue;
@@ -247,11 +261,16 @@ std::vector<std::string> AppController::get_available_interfaces(const std::stri
         std::string filename = entry.path().filename().string();
         std::transform(filename.begin(), filename.end(), filename.begin(), ::tolower);
 
-        if (filename.starts_with(prefix) && filename.ends_with(suffix)) {
-            // Extract interface name: <topic>_<interface>_input.<ext>
-            std::string interface_name = filename.substr(prefix.length());
-            interface_name = interface_name.substr(0, interface_name.length() - suffix.length());
-            interfaces.push_back(interface_name);
+        if (filename.starts_with(prefix)) {
+            if (filename.ends_with(suffix_native)) {
+                std::string interface_name = filename.substr(prefix.length());
+                interface_name = interface_name.substr(0, interface_name.length() - suffix_native.length());
+                interfaces.push_back(interface_name);
+            } else if (filename.ends_with(suffix_wasm)) {
+                std::string interface_name = filename.substr(prefix.length());
+                interface_name = interface_name.substr(0, interface_name.length() - suffix_wasm.length());
+                interfaces.push_back(interface_name);
+            }
         }
     }
     return interfaces;
@@ -283,36 +302,45 @@ std::vector<PluginInfo> AppController::get_all_plugins() const {
         }
 
         for (const auto& entry : std::filesystem::directory_iterator(dir)) {
-            if (!entry.is_regular_file() || entry.path().extension() != kLibExt) continue;
+            if (!entry.is_regular_file()) continue;
+            
+            auto ext = entry.path().extension().string();
+            if (ext != kLibExt && ext != kWasmExt) continue;
 
             logger->debug("Found potential plugin file: {}", entry.path().string());
             PluginLoader loader;
             if (auto res = loader.load(entry.path()); res) {
-                auto* plugin = loader.get_plugin();
-                
-                // Validate that the plugin type matches the directory type
-                if (plugin->get_type() != type) {
-                    logger->warn("Plugin {} reported type {}, but was found in the {} directory. Skipping.", 
-                                 entry.path().string(), 
-                                 (plugin->get_type() == PluginType::DATA ? "DATA" : "UPLOAD"),
-                                 (type == PluginType::DATA ? "data" : "upload"));
-                    continue;
-                }
+                try {
+                    auto* plugin = loader.get_plugin();
+                    
+                    // Validate that the plugin type matches the directory type
+                    if (plugin->get_type() != type) {
+                        logger->warn("Plugin {} reported type {}, but was found in the {} directory. Skipping.", 
+                                    entry.path().string(), 
+                                    (plugin->get_type() == PluginType::DATA ? "DATA" : "UPLOAD"),
+                                    (type == PluginType::DATA ? "data" : "upload"));
+                        continue;
+                    }
 
-                PluginInfo info;
-                info.name = entry.path().stem().string();
-                info.topic = plugin->get_topic();
-                info.type = (plugin->get_type() == PluginType::DATA) ? "DATA" : "UPLOAD";
-                info.version = plugin->get_version();
-                info.path = entry.path();
+                    PluginInfo info;
+                    info.name = entry.path().stem().string();
+                    info.topic = plugin->get_topic();
+                    info.type = (plugin->get_type() == PluginType::DATA) ? "DATA" : "UPLOAD";
+                    info.version = plugin->get_version();
+                    info.path = entry.path();
 
-                if (plugin->get_type() == PluginType::DATA) {
-                    info.interface_type = static_cast<IDataPlugin*>(plugin)->get_interface_type();
+                    if (plugin->get_type() == PluginType::DATA) {
+                        info.interface_type = static_cast<IDataPlugin*>(plugin)->get_interface_type();
+                    }
+                    
+                    logger->info("Discovered plugin: {} (Topic: {}, Version: {})", info.name, info.topic, info.version);
+                    plugins.push_back(info);
+                    plugin->shutdown();
+                } catch (const std::exception& e) {
+                    logger->error("Exception while extracting metadata from plugin {}: {}", entry.path().string(), e.what());
+                } catch (...) {
+                    logger->error("Unknown exception while extracting metadata from plugin {}", entry.path().string());
                 }
-                
-                logger->info("Discovered plugin: {} (Topic: {}, Version: {})", info.name, info.topic, info.version);
-                plugins.push_back(info);
-                plugin->shutdown();
             } else {
                 logger->error("Failed to load plugin for metadata scan: {} ({})", entry.path().string(), res.error());
             }
@@ -369,6 +397,12 @@ std::expected<void, std::string> AppController::load_data(const std::string& int
     plugin_config["topic"] = m_current_topic;
     plugin_config["os_user"] = get_os_user();
 
+    // Global proxy fallback
+    const auto& config = m_config_manager->get_config();
+    if (config.contains("networking") && config["networking"].contains("proxy")) {
+        plugin_config["proxy"] = config["networking"]["proxy"].get<std::string>();
+    }
+
     if (!data_plugin->initialize(plugin_config)) {
         logger->error("Failed to initialize data plugin {}. Check console/stderr for details.", plugin_name);
         std::string detail_msg = std::format("Failed to initialize data plugin {}.", plugin_name);
@@ -394,7 +428,6 @@ std::expected<void, std::string> AppController::load_data(const std::string& int
         m_current_data.push_back(r);
     }
 
-    const auto& config = m_config_manager->get_config();
     bool show_preview = true;
     if (config.contains("gui") && config["gui"].contains("show_preview")) {
         std::string val = config["gui"]["show_preview"].get<std::string>();
@@ -408,7 +441,12 @@ std::expected<void, std::string> AppController::load_data(const std::string& int
         }
     }
 
-    update_log(std::format("Loaded {} records from {}", m_current_data.size(), std::filesystem::path(path_or_conn).filename().string()));
+    std::string source_display = path_or_conn;
+    if (path_or_conn.find("://") == std::string::npos) {
+        source_display = std::filesystem::path(path_or_conn).filename().string();
+    }
+
+    update_log(std::format("Loaded {} records from {}", m_current_data.size(), source_display));
     logger->info("Successfully loaded {} records from {}", m_current_data.size(), path_or_conn);
     
     if (m_window) {

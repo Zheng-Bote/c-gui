@@ -51,10 +51,6 @@ This product includes software developed by third parties. The following compone
   License: BSD 2-Clause License
   Attribution: Copyright (c) 2012-2024 Magnus Edenhill (https://github.com/edenhill/librdkafka).
 
-- inih (>=62)
-  License: BSD 3-Clause License
-  Attribution: Copyright (c) 2009-2024 Ben Hoyt (https://github.com/benhoyt/inih).
-
 - spdlog (>=1.15)
   License: MIT
   Attribution: Copyright (c) 2016 Gabi Melman (https://github.com/gabime/spdlog).
@@ -70,6 +66,10 @@ This product includes software developed by third parties. The following compone
 - OpenXLSX (>=0.4.1)
   License: MIT
   Attribution: Copyright (c) 2024 Troels K. Dalgaard (https://github.com/troldal/OpenXLSX).
+
+- WASMTIME (>=22)
+  License: Apache License 2.0
+  Attribution: Copyright (c) 2019-2026 The Wasmtime Project Authors (https://github.com/bytecodealliance/wasmtime/)
 
 - gh-update-checker (>=1.1.1)
   License: LGPL-3.0

@@ -2,12 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - 2026-05-22
+## [0.6.0] - 2026-05-23
 
 ### Added
+- **WebAssembly (WASM) Plugin Support**:
+  - Integrated the **Wasmtime** engine to host sandboxed input plugins.
+  - Bidirectional communication via JSON-string memory bridge.
+  - Support for `.wasm` files alongside native shared libraries in the plugin directory.
+- **Host-Assisted Networking for WASM**:
+  - Exported native `libcurl` functions to the WASM environment, allowing sandboxed plugins to perform secure HTTPS requests.
+  - Enabled **Native System CA Store** access (Windows) for seamless SSL validation.
+  - Support for global and topic-specific proxy configurations within WASM networking calls.
+- **New Plugin Examples (Go)**:
+  - `location_rest-json_input`: A functional WASM plugin fetching data from remote REST APIs.
+- **Enhanced Branding**:
+  - Integrated application icon (`favicon.ico`) and high-resolution logo (`logo.png`).
+  - Branded "About" dialog featuring the logo and a centralized layout.
+- **Robust INI Parsing**:
+  - Replaced the `inih` library with a custom, unlimited-length parser.
+  - Native support for complex, multiline-capable connection strings (e.g., Oracle, Kafka).
 - **Dynamic Configuration Management**:
   - New "Config" menu in the GUI allowing users to update security and network settings on-the-fly.
   - **Log Signing Key**: Generate (Ed25519) and save 64-byte hex signing keys directly from the UI.
@@ -28,14 +44,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Detailed README for the Oracle plugin including environment setup requirements.
 
 ### Fixed
+- **Stability**: Implemented exception-safe plugin discovery and metadata scanning to prevent crashes from malformed modules.
 - **Stability**: Resolved "failed to parse" errors for long configuration lines by implementing a custom INI parser.
 - **Integrity**: Fixed a potential configuration corruption bug by ensuring UTF-8 password handling in the GUI.
+- **Networking**: Fixed SSL verification errors (CURLcode 60) on Windows by utilizing the OS trust store.
+- **UX**: Corrected GUI log formatting to display full URLs for web-based data sources.
 - **UX**: Improved Audit Log formatting by removing redundant timestamps and adopting a structured key-value format.
 - **Linking**: Fixed plugin linker errors on Windows by decoupling C++ ABI dependencies between the core application and shared modules.
+- **Code Quality**: Resolved duplicate variable declarations and shadowed configuration settings in `AppController`.
 
 ## [0.5.0] - 2026-05-19
 
 ### Added
+- **Audit Log Signing**:
+  - Implemented cryptographic signing for critical audit logs using `libsodium` (Ed25519).
+  - New configuration menu to set and persist log signing keys.
+- **Dynamic Configuration Management**:
+  - GUI-based updates for security and network settings with automatic INI-style persistence.
 - **Audit Log Signing**:
   - Implemented cryptographic signing for critical audit logs using `libsodium` (Ed25519).
   - New `AuditLogSink` in `LogManager` appends detached signatures to every log line for non-repudiation.
@@ -124,6 +149,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Concurrency**: Ensured all UI updates from background threads are performed safely via `wxWindow::CallAfter`.
 
 ## [0.1.0] - 2025-02-13
+- Initial internal release with core validation and native plugin support.
 
 ### Added
 - Initial project structure with `cgui_core` and `wxWidgets` front-end.

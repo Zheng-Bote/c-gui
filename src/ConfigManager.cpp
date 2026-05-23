@@ -19,7 +19,6 @@
 #include "LogManager.hpp"
 #include <sodium.h>
 #include <fstream>
-#include <ini.h>
 #include <iostream>
 
 namespace cgui {
@@ -30,7 +29,7 @@ ConfigManager::~ConfigManager() {
 }
 
 /**
- * @brief Callback for inih parser.
+ * @brief Callback for the custom INI parser.
  */
 static int ini_handler(void* user, const char* section, const char* name, const char* value) {
     auto* config = static_cast<nlohmann::json*>(user);
