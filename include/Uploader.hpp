@@ -23,13 +23,14 @@
 #include <expected>
 #include <thread>
 #include <nlohmann/json.hpp>
+#include "common.hpp"
 
 namespace cgui {
 
 /**
  * @brief Handles synchronous and asynchronous uploads.
  */
-class Uploader {
+class CGUI_API Uploader {
 public:
     Uploader();
     ~Uploader();

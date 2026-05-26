@@ -16,10 +16,12 @@
  */
 
 #include "KafkaInputPlugin.hpp"
+#include "LogManager.hpp"
 #include <iostream>
 #include <chrono>
 #include <map>
 #include <sstream>
+#include <format>
 
 namespace cgui {
 
@@ -38,7 +40,9 @@ static std::map<std::string, std::string> parse_kafka_params(const std::string& 
             std::string value = segment.substr(colon_pos + 1);
             
             auto trim = [](std::string& s) {
+                if (s.empty()) return;
                 s.erase(0, s.find_first_not_of(" "));
+                if (s.empty()) return;
                 s.erase(s.find_last_not_of(" ") + 1);
             };
             trim(key);
@@ -52,9 +56,11 @@ static std::map<std::string, std::string> parse_kafka_params(const std::string& 
 
 bool KafkaInputPlugin::initialize(const nlohmann::json& config) {
     std::string errstr;
+    std::string topic_name = config.contains("topic") ? config["topic"].get<std::string>() : "Core";
+    auto logger = LogManager::get_instance().get_logger(topic_name);
 
     if (!config.contains("connection_string")) {
-        std::cerr << "Kafka Plugin: Missing connection_string in configuration\n";
+        logger->error("Kafka Plugin: Missing connection_string in configuration");
         return false;
     }
 
@@ -63,7 +69,7 @@ bool KafkaInputPlugin::initialize(const nlohmann::json& config) {
 
     if (params.count("broker") == 0 || params.count("topic") == 0 || 
         params.count("api_key") == 0 || params.count("api_secret") == 0) {
-        std::cerr << "Kafka Plugin: Missing required parameters in connection string\n";
+        logger->error("Kafka Plugin: Missing required parameters in connection string (broker, topic, api_key, api_secret)");
         return false;
     }
 
@@ -71,7 +77,7 @@ bool KafkaInputPlugin::initialize(const nlohmann::json& config) {
     std::string brokers = params["broker"];
     std::string api_key = params["api_key"];
     std::string api_secret = params["api_secret"];
-    std::string base_group_id = params.count("group_id") ? params["group_id"] : "cgui.default.group";
+    std::string base_group_id = params.count("group_id") ? params["group_id"] : "cgui.default.group.";
 
     // Requirement: group.id should be extended with <username>
     std::string username = "unknown_user";
@@ -84,34 +90,50 @@ bool KafkaInputPlugin::initialize(const nlohmann::json& config) {
 
     auto set_conf = [&](const std::string& key, const std::string& val) {
         if (m_conf->set(key, val, errstr) != RdKafka::Conf::CONF_OK) {
-            std::cerr << "Kafka Plugin: Failed to set " << key << ": " << errstr << "\n";
+            logger->error("Kafka Plugin: Failed to set {}: {}", key, errstr);
             return false;
         }
         return true;
     };
 
     if (!set_conf("bootstrap.servers", brokers)) return false;
-    if (!set_conf("security.protocol", "SASL_SSL")) return false;
-    if (!set_conf("sasl.mechanism", "PLAIN")) return false;
-    if (!set_conf("sasl.username", api_key)) return false;
-    if (!set_conf("sasl.password", api_secret)) return false;
+    
+    // Support custom security protocol and mechanism if provided in params, otherwise default to SASL_SSL/PLAIN
+    std::string protocol = params.count("security_protocol") ? params["security_protocol"] : "SASL_SSL";
+    std::string mechanism = params.count("sasl_mechanism") ? params["sasl_mechanism"] : "PLAIN";
+
+    if (!set_conf("security.protocol", protocol)) return false;
+    if (protocol.find("SASL") != std::string::npos) {
+        if (!set_conf("sasl.mechanism", mechanism)) return false;
+        if (!set_conf("sasl.username", api_key)) return false;
+        if (!set_conf("sasl.password", api_secret)) return false;
+    }
+    
     if (!set_conf("group.id", full_group_id)) return false;
     if (!set_conf("auto.offset.reset", "earliest")) return false;
 
+    // SSL CA handling
+    if (config.contains("ssl_ca_path") && !config["ssl_ca_path"].is_null()) {
+        std::string ca_path = config["ssl_ca_path"].get<std::string>();
+        if (!ca_path.empty()) {
+            if (!set_conf("ssl.ca.location", ca_path)) return false;
+        }
+    }
+
     m_consumer.reset(RdKafka::KafkaConsumer::create(m_conf.get(), errstr));
     if (!m_consumer) {
-        std::cerr << "Kafka Plugin: Failed to create consumer: " << errstr << "\n";
+        logger->error("Kafka Plugin: Failed to create consumer: {}", errstr);
         return false;
     }
 
     RdKafka::ErrorCode err = m_consumer->subscribe({m_kafka_topic});
     if (err != RdKafka::ERR_NO_ERROR) {
-        std::cerr << "Kafka Plugin: Failed to subscribe to " << m_kafka_topic << ": " << RdKafka::err2str(err) << "\n";
+        logger->error("Kafka Plugin: Failed to subscribe to {}: {}", m_kafka_topic, RdKafka::err2str(err));
         return false;
     }
 
     m_initialized = true;
-    std::cout << "Kafka Plugin: Initialized for user '" << username << "' on topic " << m_kafka_topic << "\n";
+    logger->info("Kafka Plugin: Initialized for user '{}' on topic {} (group: {})", username, m_kafka_topic, full_group_id);
     return true;
 }
 

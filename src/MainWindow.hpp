@@ -23,6 +23,7 @@
 #include <vector>
 #include <string>
 #include "Validator.hpp"
+#include "common.hpp"
 
 namespace cgui {
 
@@ -32,7 +33,7 @@ class AppController;
  * @class MainWindow
  * @brief Main frame of the application.
  */
-class MainWindow : public wxFrame {
+class CGUI_API MainWindow : public wxFrame {
 public:
     MainWindow(const wxString& title, AppController* controller);
     ~MainWindow() = default;

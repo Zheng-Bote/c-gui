@@ -23,10 +23,11 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include "common.hpp"
 
 namespace cgui {
 
-struct ValidationError {
+struct CGUI_API ValidationError {
     std::string path;
     std::string message;
 };
@@ -34,7 +35,7 @@ struct ValidationError {
 /**
  * @brief Validates JSON documents against a schema.
  */
-class Validator {
+class CGUI_API Validator {
 public:
     /**
      * @brief Validate a JSON document against a schema.

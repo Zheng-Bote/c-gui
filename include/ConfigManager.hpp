@@ -23,13 +23,14 @@
 #include <nlohmann/json.hpp>
 #include <expected>
 #include <vector>
+#include "common.hpp"
 
 namespace cgui {
 
 /**
  * @brief Manages encrypted configuration files.
  */
-class ConfigManager {
+class CGUI_API ConfigManager {
 public:
     ConfigManager() = default;
     ~ConfigManager();

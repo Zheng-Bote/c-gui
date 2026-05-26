@@ -24,6 +24,7 @@
 #include <filesystem>
 #include <spdlog/spdlog.h>
 #include <functional>
+#include "common.hpp"
 
 namespace cgui {
 
@@ -31,7 +32,7 @@ namespace cgui {
  * @class LogManager
  * @brief Singleton/Manager for topic-specific spdlog loggers.
  */
-class LogManager {
+class CGUI_API LogManager {
 public:
     using LogCallback = std::function<void(const std::string&)>;
 
@@ -75,19 +76,14 @@ public:
     void set_signing_key(const std::string& hex_key);
 
 private:
-    LogManager() = default;
-    ~LogManager() = default;
+    LogManager();
+    ~LogManager();
 
-    std::string m_log_path = "./logs";
-    spdlog::level::level_enum m_level = spdlog::level::info;
-    std::string m_signing_key_hex;
-    std::vector<unsigned char> m_signing_key;
-    
-    std::map<std::string, std::shared_ptr<spdlog::logger>> m_loggers;
-    std::map<std::string, std::shared_ptr<spdlog::logger>> m_audit_loggers;
-
-    spdlog::level::level_enum parse_level(const std::string& level_str);
-    std::string get_current_date_str();
+    struct Impl;
+#pragma warning(push)
+#pragma warning(disable: 4251)
+    std::unique_ptr<Impl> m_impl;
+#pragma warning(pop)
 };
 
 } // namespace cgui

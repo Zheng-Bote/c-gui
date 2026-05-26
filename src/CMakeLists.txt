@@ -28,7 +28,9 @@ set(CORE_SOURCES
     WasmDataPlugin.cpp
 )
 
-add_library(cgui_core STATIC ${CORE_SOURCES})
+add_library(cgui_core SHARED ${CORE_SOURCES})
+
+target_compile_definitions(cgui_core PRIVATE CGUI_CORE_EXPORTS)
 
 target_include_directories(cgui_core PUBLIC
     ${PROJECT_SOURCE_DIR}/include

@@ -23,13 +23,14 @@
 #include <memory>
 #include <expected>
 #include "PluginAPI.hpp"
+#include "common.hpp"
 
 namespace cgui {
 
 /**
  * @brief Loads and manages a single plugin from a shared library.
  */
-class PluginLoader {
+class CGUI_API PluginLoader {
 public:
     PluginLoader() = default;
     ~PluginLoader();

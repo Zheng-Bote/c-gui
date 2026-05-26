@@ -88,7 +88,39 @@ namespace {
     };
 
     using audit_signing_sink_mt = audit_signing_sink<std::mutex>;
+
+    spdlog::level::level_enum parse_level(const std::string& level_str) {
+        if (level_str == "trace") return spdlog::level::trace;
+        if (level_str == "debug") return spdlog::level::debug;
+        if (level_str == "info") return spdlog::level::info;
+        if (level_str == "warn") return spdlog::level::warn;
+        if (level_str == "err") return spdlog::level::err;
+        if (level_str == "critical") return spdlog::level::critical;
+        if (level_str == "off") return spdlog::level::off;
+        return spdlog::level::info;
+    }
+
+    std::string get_current_date_str() {
+        auto now = std::chrono::system_clock::now();
+        auto in_time_t = std::chrono::system_clock::to_time_t(now);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d");
+        return ss.str();
+    }
 }
+
+struct LogManager::Impl {
+    std::string m_log_path = "./logs";
+    spdlog::level::level_enum m_level = spdlog::level::info;
+    std::string m_signing_key_hex;
+    std::vector<unsigned char> m_signing_key;
+    
+    std::map<std::string, std::shared_ptr<spdlog::logger>> m_loggers;
+    std::map<std::string, std::shared_ptr<spdlog::logger>> m_audit_loggers;
+};
+
+LogManager::LogManager() : m_impl(std::make_unique<Impl>()) {}
+LogManager::~LogManager() = default;
 
 LogManager& LogManager::get_instance() {
     static LogManager instance;
@@ -96,11 +128,11 @@ LogManager& LogManager::get_instance() {
 }
 
 void LogManager::initialize(const std::string& log_path, const std::string& log_level) {
-    m_log_path = log_path;
-    m_level = parse_level(log_level);
+    m_impl->m_log_path = log_path;
+    m_impl->m_level = parse_level(log_level);
     
-    if (!std::filesystem::exists(m_log_path)) {
-        std::filesystem::create_directories(m_log_path);
+    if (!std::filesystem::exists(m_impl->m_log_path)) {
+        std::filesystem::create_directories(m_impl->m_log_path);
     }
 
     // Initialize core logger
@@ -115,13 +147,13 @@ std::shared_ptr<spdlog::logger> LogManager::get_logger(const std::string& topic)
     std::string date_str = get_current_date_str();
     std::string logger_name = date_str + "_" + topic;
 
-    auto it = m_loggers.find(logger_name);
-    if (it != m_loggers.end()) {
+    auto it = m_impl->m_loggers.find(logger_name);
+    if (it != m_impl->m_loggers.end()) {
         return it->second;
     }
 
     // Create new logger for this topic and date
-    std::string filename = (std::filesystem::path(m_log_path) / (logger_name + ".log")).string();
+    std::string filename = (std::filesystem::path(m_impl->m_log_path) / (logger_name + ".log")).string();
     
     // 10MB rotation, max 5 files
     auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(filename, 1024 * 1024 * 10, 5);
@@ -145,14 +177,14 @@ std::shared_ptr<spdlog::logger> LogManager::get_logger(const std::string& topic)
 
     auto logger = std::make_shared<spdlog::logger>(logger_name, sinks.begin(), sinks.end());
     
-    logger->set_level(m_level);
+    logger->set_level(m_impl->m_level);
     logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
     
     // Ensure logs are flushed immediately
     logger->flush_on(spdlog::level::trace);
     spdlog::flush_every(std::chrono::seconds(1));
     
-    m_loggers[logger_name] = logger;
+    m_impl->m_loggers[logger_name] = logger;
     return logger;
 }
 
@@ -164,20 +196,20 @@ std::shared_ptr<spdlog::logger> LogManager::get_audit_logger(const std::string& 
     std::string date_str = get_current_date_str();
     std::string logger_name = date_str + "_" + topic + "_audit";
 
-    auto it = m_audit_loggers.find(logger_name);
-    if (it != m_audit_loggers.end()) {
+    auto it = m_impl->m_audit_loggers.find(logger_name);
+    if (it != m_impl->m_audit_loggers.end()) {
         return it->second;
     }
 
     // Audit logs go to a separate file
-    std::string filename = (std::filesystem::path(m_log_path) / (logger_name + ".log")).string();
+    std::string filename = (std::filesystem::path(m_impl->m_log_path) / (logger_name + ".log")).string();
     
     // File sink for the actual storage
     auto file_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(filename, 1024 * 1024 * 10, 5);
     file_sink->set_pattern("%v"); // Underlying sink should only write the formatted and signed payload
     
     // Wrap it in our signing sink
-    auto signing_sink = std::make_shared<audit_signing_sink_mt>(file_sink, m_signing_key);
+    auto signing_sink = std::make_shared<audit_signing_sink_mt>(file_sink, m_impl->m_signing_key);
     
     // We also want audit logs in the console and GUI (without the signature there to keep it clean)
     auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
@@ -196,11 +228,11 @@ std::shared_ptr<spdlog::logger> LogManager::get_audit_logger(const std::string& 
     }
 
     auto logger = std::make_shared<spdlog::logger>(logger_name, sinks.begin(), sinks.end());
-    logger->set_level(m_level);
+    logger->set_level(m_impl->m_level);
     logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
     logger->flush_on(spdlog::level::trace);
 
-    m_audit_loggers[logger_name] = logger;
+    m_impl->m_audit_loggers[logger_name] = logger;
     return logger;
 }
 
@@ -210,37 +242,18 @@ void LogManager::set_signing_key(const std::string& hex_key) {
         return;
     }
 
-    m_signing_key_hex = hex_key;
-    m_signing_key.resize(crypto_sign_SECRETKEYBYTES);
+    m_impl->m_signing_key_hex = hex_key;
+    m_impl->m_signing_key.resize(crypto_sign_SECRETKEYBYTES);
     
-    if (sodium_hex2bin(m_signing_key.data(), m_signing_key.size(), 
+    if (sodium_hex2bin(m_impl->m_signing_key.data(), m_impl->m_signing_key.size(), 
                        hex_key.c_str(), hex_key.length(), 
                        nullptr, nullptr, nullptr) != 0) {
         get_core_logger()->error("Failed to parse Ed25519 secret key from hex.");
-        m_signing_key.clear();
+        m_impl->m_signing_key.clear();
         return;
     }
 
     get_core_logger()->info("Audit log signing key configured successfully.");
-}
-
-spdlog::level::level_enum LogManager::parse_level(const std::string& level_str) {
-    if (level_str == "trace") return spdlog::level::trace;
-    if (level_str == "debug") return spdlog::level::debug;
-    if (level_str == "info") return spdlog::level::info;
-    if (level_str == "warn") return spdlog::level::warn;
-    if (level_str == "err") return spdlog::level::err;
-    if (level_str == "critical") return spdlog::level::critical;
-    if (level_str == "off") return spdlog::level::off;
-    return spdlog::level::info;
-}
-
-std::string LogManager::get_current_date_str() {
-    auto now = std::chrono::system_clock::now();
-    auto in_time_t = std::chrono::system_clock::to_time_t(now);
-    std::stringstream ss;
-    ss << std::put_time(std::localtime(&in_time_t), "%Y-%m-%d");
-    return ss.str();
 }
 
 } // namespace cgui

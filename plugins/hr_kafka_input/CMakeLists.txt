@@ -20,10 +20,13 @@ target_include_directories(hr_kafka_input PRIVATE ${CMAKE_SOURCE_DIR}/include)
 # Find dependencies
 find_package(nlohmann_json REQUIRED)
 find_package(RdKafka REQUIRED)
+find_package(spdlog REQUIRED)
 
 target_link_libraries(hr_kafka_input PRIVATE 
+    cgui_core
     nlohmann_json::nlohmann_json
     RdKafka::rdkafka++
+    spdlog::spdlog
 )
 
 set_target_properties(hr_kafka_input PROPERTIES

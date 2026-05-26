@@ -397,8 +397,19 @@ std::expected<void, std::string> AppController::load_data(const std::string& int
     plugin_config["topic"] = m_current_topic;
     plugin_config["os_user"] = get_os_user();
 
-    // Global proxy fallback
     const auto& config = m_config_manager->get_config();
+    
+    // Pass SSL and auth settings to plugin
+    if (config.contains("auth")) {
+        if (config["auth"].contains("ssl_ca_path")) {
+            plugin_config["ssl_ca_path"] = config["auth"]["ssl_ca_path"].get<std::string>();
+        }
+        if (config["auth"].contains("verify_ssl")) {
+            plugin_config["verify_ssl"] = config["auth"]["verify_ssl"].get<std::string>() == "true";
+        }
+    }
+
+    // Global proxy fallback
     if (config.contains("networking") && config["networking"].contains("proxy")) {
         plugin_config["proxy"] = config["networking"]["proxy"].get<std::string>();
     }

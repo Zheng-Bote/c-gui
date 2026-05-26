@@ -36,7 +36,7 @@ class CGuiRecipe(ConanFile):
         self.requires("valijson/[>=1.1 <2]")
         self.requires("libpqxx/[>=8.0 <9]")
         self.requires("soci/[>=4.1 <5]")
-        self.requires("librdkafka/[>=2.14 <3]")
+        self.requires("librdkafka/[>=2.4 <3]")
         self.requires("spdlog/[>=1.15 <2]")
         self.requires("catch2/[>=3.14 <4]")
         self.requires("cpp-httplib/[>=0.44 <1]")
@@ -46,6 +46,7 @@ class CGuiRecipe(ConanFile):
     def configure(self):
         self.options["soci"].with_oracle = True
         self.options["cpp-httplib"].with_openssl = True
+        self.options["librdkafka"].with_ssl = True
         self.options["wxwidgets"].shared = True
         if self.settings.os == "Windows":
             self.options["wxwidgets"].msvc_runtime = self.settings.compiler.runtime

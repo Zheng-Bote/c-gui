@@ -32,6 +32,7 @@
 #include "SchemaManager.hpp"
 #include "Validator.hpp"
 #include "Uploader.hpp"
+#include "common.hpp"
 
 namespace cgui {
 
@@ -41,7 +42,7 @@ class MainWindow;
  * @struct PluginInfo
  * @brief Metadata about a discovered plugin.
  */
-struct PluginInfo {
+struct CGUI_API PluginInfo {
     std::string name;
     std::string topic;
     std::string type;    // "DATA" or "UPLOAD"
@@ -54,7 +55,7 @@ struct PluginInfo {
  * @class AppController
  * @brief Main controller for the application.
  */
-class AppController {
+class CGUI_API AppController {
 public:
     AppController();
     ~AppController();
